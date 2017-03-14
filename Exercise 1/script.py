@@ -34,7 +34,6 @@ for m in range(2):
 	dim = 100
 	total = 1000-dim
 	D = np.append(D[0:dim],np.zeros((total)))
-	print(D)
 	D = np.diag(D)
 
 	print(D.shape)
@@ -46,7 +45,8 @@ for m in range(2):
 	print(Uprime.shape, Vprime.shape)
 	B = np.dot(U,np.dot(D,V))
 	print(np.isclose(A,B).all())
-
+	low_values_indices = A < 0  # Where values are low
+	A[low_values_indices] = 0  # All low values set to 0
 	#now lets predict the data from samplesubmission
 	fout = open('mysubmission.csv', 'w')
 	fout.write("Id,Prediction\n")
