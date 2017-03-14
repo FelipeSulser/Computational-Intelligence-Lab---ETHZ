@@ -17,18 +17,23 @@ with open("data_train.csv") as csvfile:
 		col_i = int(match2.group(0)[1:]) -1
 		A[col_i,row_i] = int(row[1])
 
-means = np.mean(A,axis=0)
+means = np.mean(A,axis=1)
+totalmean = np.mean(means)
+K = 25
+sums = np.sum(A,axis=1)
+bettermean = [(totalmean*K + sums[i])/(K+10000) for i in range(means.shape[0])]
 for x in range(A.shape[0]): #x is cols
 	for y in range(A.shape[1]):
 		if A[x,y]==0:
-			A[x,y] = means[x]
+			A[x,y] = bettermean[x]
 
 for m in range(2):
 
 	#SVD
 	U, D, V = np.linalg.svd(A, full_matrices=False)
-
-	D = np.append(D[0:20],np.zeros((980)))
+	dim = 100
+	total = 1000-dim
+	D = np.append(D[0:dim],np.zeros((total)))
 	print(D)
 	D = np.diag(D)
 
