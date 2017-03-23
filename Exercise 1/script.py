@@ -20,7 +20,7 @@ with open("data_train.csv") as csvfile:
 means = np.average(A, axis=1, weights=A.astype(bool))
 totalmean = np.mean(means)
 K = 25
-sums = np.sum(A,axis=0)
+sums = np.sum(A,axis=1)
 bettermean = [(totalmean*K + sums[i])/(K+10000) for i in range(means.shape[0])]
 #Tip: Use netflix's challenge mean "Bettermean"
 for x in range(A.shape[0]): #x is cols
@@ -28,12 +28,12 @@ for x in range(A.shape[0]): #x is cols
 		if A[x,y]==0:
 			A[x,y] = means[x]
 
-for m in range(2):
+for m in range(1):
 
 	#SVD
 	#SVD
 	U, D, V = np.linalg.svd(A, full_matrices=False)
-	dim = 50
+	dim = 25
 	total = 1000-dim
 	D = np.append(D[0:dim],np.zeros((total)))
 	D = np.diag(D)
