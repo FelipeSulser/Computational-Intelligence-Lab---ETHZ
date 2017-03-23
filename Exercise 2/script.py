@@ -41,13 +41,17 @@ def rmse(I,R,Q,P):
 
 train_errors = []
 
-K = 30
-U = np.random.rand(K,M)
-Z = np.random.rand(K,N)
-print(U.dtype)
-n_epochs = 2
+K = 50
+U = np.random.normal(2.5,1.0,size=K*M).reshape((K,M))
+Z = np.random.normal(2.5,1.0,size=K*N).reshape((K,N))
+
+U[U>5.0] = 5.0
+U[U<1.0] = 1.0
+Z[Z>5.0] = 5.0
+Z[Z<1.0] = 1.0
+n_epochs = 15
 lmda = 0.01
-gamma = 0.01
+gamma = 0.001
 
 #DO SGD
 users,movies = R.nonzero()
@@ -57,6 +61,7 @@ print(movies.shape)
 
 for epoch in range(n_epochs):
     for u, i in zip(users,movies):
+        gamma = 0.001*(1.0/(np.sqrt(epoch+1.0)))
        # gamma = 1.0  / (np.sqrt(epoch+1)*10000.0)
         e = R[u, i] - prediction(U[:,u],Z[:,i])
         U[:,u] += gamma * ( +e * Z[:,i] - lmda * U[:,u])
