@@ -78,6 +78,6 @@ with open("SampleSubmission.csv") as csvfile:
         match2 = re.search(regex2,row[0])
         row_i = int(match.group(0))-1
         col_i = int(match2.group(0)[1:]) -1
-        calc = prediction(U[:,row_i], Z[:,col_i])
+        calc = np.dot(U[row_i,:], Z[col_i,:].T)
         fout.write(row[0]+","+str(calc)+"\n")
     fout.close()
