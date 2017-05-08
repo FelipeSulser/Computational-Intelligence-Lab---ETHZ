@@ -3,8 +3,6 @@ Baseline for CIL project on road segmentation.
 This simple baseline consits of a CNN with two convolutional+pooling layers with a soft-max loss
 """
 
-
-
 import gzip
 import os
 import sys
@@ -22,12 +20,12 @@ import tensorflow as tf
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
-TRAINING_SIZE = 20
+TRAINING_SIZE = 100
 VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
 BATCH_SIZE = 16 # 64
-NUM_EPOCHS = 5
-RESTORE_MODEL = False # If True, restore existing model instead of training a new one
+NUM_EPOCHS = 8
+RESTORE_MODEL = True # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
 
 # Set image patch size in pixels
@@ -35,7 +33,10 @@ RECORDING_STEP = 1000
 # image size should be an integer multiple of this number!
 IMG_PATCH_SIZE = 16
 
-tf.app.flags.DEFINE_string('train_dir', '/tmp/mnist',
+NUMFILES = 0
+NAMEFILES = []
+
+tf.app.flags.DEFINE_string('train_dir', 'datafiles',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 FLAGS = tf.app.flags.FLAGS
@@ -188,9 +189,12 @@ def main(argv=None):  # pylint: disable=unused-argument
     data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
     train_data_filename = data_dir + 'images/'
     train_labels_filename = data_dir + 'groundtruth/' 
-
+    predict_dir = (os.path.dirname(os.path.realpath(__file__)))+'/test_set_images/'
     # Extract it into numpy arrays.
     
+    NUMFILES = len([name for name in os.listdir(predict_dir) if name != ".DS_Store"])
+    NAMEFILES = [name for name in os.listdir(predict_dir) if name != ".DS_Store"]
+
     train_data = extract_data(train_data_filename, TRAINING_SIZE)
     train_labels = extract_labels(train_labels_filename, TRAINING_SIZE)
 
@@ -289,6 +293,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     # Get prediction for given input image 
     def get_prediction(img):
         data = numpy.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE))
+        #print(data)
         data_node = tf.constant(data)
         output = tf.nn.softmax(model(data_node))
         output_prediction = s.run(output)
@@ -308,6 +313,26 @@ def main(argv=None):  # pylint: disable=unused-argument
 
         return cimg
 
+    def gtruth_pred(filename,image_idx):
+        imageid = image_idx
+        fname = "test_"+str(image_idx)
+
+        image_filename = filename +fname+"/"+fname+".png"
+        img = mpimg.imread(image_filename)
+        img_prediction = get_prediction(img)
+        cimg = concatenate_images(img,img_prediction)
+        return cimg
+
+    def generate_real_out(filename,image_idx):
+        imageid = image_idx
+        fname = "test_"+str(image_idx)
+
+        image_filename = filename +fname+"/"+fname+".png"
+        img = mpimg.imread(image_filename)
+        img_prediction = get_prediction(img)
+        return img_prediction
+
+
     # Get prediction overlaid on the original image for given input file
     def get_prediction_with_overlay(filename, image_idx):
 
@@ -319,6 +344,16 @@ def main(argv=None):  # pylint: disable=unused-argument
         oimg = make_img_overlay(img, img_prediction)
 
         return oimg
+
+    def otruth_pred(filename,image_idx):
+         #imageid = "satImage_%.3d" % image_idx
+        fname = "test_"+str(image_idx)
+        image_filename = filename + fname+"/"+fname + ".png"
+        img = mpimg.imread(image_filename)
+        img_prediction = get_prediction(img)
+        oimg = make_img_overlay(img, img_prediction)
+        return oimg
+
 
     # We will replicate the model structure for the training subgraph, as well
     # as the evaluation subgraphs, while sharing the trainable parameters.
@@ -351,11 +386,11 @@ def main(argv=None):  # pylint: disable=unused-argument
                               padding='SAME')
 
         # Uncomment these lines to check the size of each layer
-        # print 'data ' + str(data.get_shape())
-        # print 'conv ' + str(conv.get_shape())
-        # print 'relu ' + str(relu.get_shape())
-        # print 'pool ' + str(pool.get_shape())
-        # print 'pool2 ' + str(pool2.get_shape())
+        #print('data ' + str(data.get_shape()))
+        #print('conv ' + str(conv.get_shape()))
+        #print('relu ' + str(relu.get_shape()))
+        #print('pool ' + str(pool.get_shape()))
+        #print('pool2 ' + str(pool2.get_shape()))
 
 
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
@@ -437,8 +472,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Create a local session to run this computation.
     with tf.Session() as s:
-
-
         if RESTORE_MODEL:
             # Restore variables from disk.
             saver.restore(s, FLAGS.train_dir + "/model.ckpt")
@@ -446,6 +479,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
         else:
             # Run all the initializers to prepare the trainable parameters.
+            #tf.global_variables_initializer.run()
             tf.initialize_all_variables().run()
 
             # Build the summary operation based on the TF collection of Summaries.
@@ -488,7 +522,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
                         # print_predictions(predictions, batch_labels)
 
-                        print ('Epoch %.2f' % (float(step) * BATCH_SIZE / train_size))
+                        print ('Epoch %.2f' % (iepoch))
                         print ('Minibatch loss: %.3f, learning rate: %.6f' % (l, lr))
                         print ('Minibatch error: %.1f%%' % error_rate(predictions,
                                                                      batch_labels))
@@ -507,13 +541,22 @@ def main(argv=None):  # pylint: disable=unused-argument
 
         print ("Running prediction on training set")
         prediction_training_dir = "predictions_training/"
+        real_prediction = "myprediction/"
         if not os.path.isdir(prediction_training_dir):
             os.mkdir(prediction_training_dir)
-        for i in range(1, TRAINING_SIZE+1):
-            pimg = get_prediction_with_groundtruth(train_data_filename, i)
-            Image.fromarray(pimg).save(prediction_training_dir + "prediction_" + str(i) + ".png")
-            oimg = get_prediction_with_overlay(train_data_filename, i)
-            oimg.save(prediction_training_dir + "overlay_" + str(i) + ".png")       
+        if not os.path.isdir(real_prediction):
+            os.mkdir(real_prediction)
+        if not os.path.isdir(real_prediction+"result/"):
+            os.mkdir(real_prediction+"result/")
+        for i in range(1,NUMFILES+1):
+            pimg = gtruth_pred(predict_dir, i)
+            Image.fromarray(pimg).save(real_prediction + "prediction_" + str(i) + ".png")
+            oimg = otruth_pred(predict_dir, i)
+            oimg.save(real_prediction + "overlay_" + str(i) + ".png")
+            realoutput = generate_real_out(predict_dir,i)
+            #need to multiply by 255 so its a real white pixel
+            Image.fromarray(255*realoutput).convert('RGB').save(real_prediction+"result/"+"prediction_"+str(i)+".png")
+
 
 if __name__ == '__main__':
 
