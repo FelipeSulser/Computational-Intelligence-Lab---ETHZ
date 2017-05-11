@@ -5,6 +5,7 @@ import Image
 import math
 import matplotlib.image as mpimg
 import numpy as np
+import matplotlib.pyplot as plt
 
 label_file = 'dummy_submission.csv'
 

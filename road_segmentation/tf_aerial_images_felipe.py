@@ -9,13 +9,13 @@ import sys
 import urllib
 import matplotlib.image as mpimg
 from PIL import Image
-
+import matplotlib.pyplot as plt
 import code
-
 import tensorflow.python.platform
-
 import numpy
 import tensorflow as tf
+from scipy import ndimage
+import math
 
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
@@ -23,7 +23,9 @@ NUM_LABELS = 2
 TRAINING_SIZE = 100
 VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
+#TODO change batch size
 BATCH_SIZE = 16 # 64
+#TODO change epoch number
 NUM_EPOCHS = 8
 RESTORE_MODEL = False # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
@@ -31,7 +33,8 @@ RECORDING_STEP = 1000
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
-IMG_PATCH_SIZE = 16
+#TODO change patch size
+IMG_PATCH_SIZE = 8 #8x8
 
 NUMFILES = 0
 NAMEFILES = []
@@ -184,6 +187,18 @@ def make_img_overlay(img, predicted_img):
     return new_img
 
 
+def plotNNFilter(units):
+    print(units.shape)
+    filters = int(units.shape[3])
+    print(filters)
+    plt.figure(1, figsize=(20,20))
+    n_columns = 6
+    n_rows = math.ceil(filters / n_columns) + 1
+    for i in range(filters):
+        plt.subplot(n_rows, n_columns, i+1)
+        plt.title('Filter ' + str(i))
+        plt.imshow(units[0,:,:,i], interpolation="nearest", cmap="gray")
+
 def main(argv=None):  # pylint: disable=unused-argument
 
     data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
@@ -246,25 +261,41 @@ def main(argv=None):  # pylint: disable=unused-argument
     # initial value which will be assigned when when we call:
     # {tf.initialize_all_variables().run()}
     conv1_weights = tf.Variable(
-        tf.truncated_normal([5, 5, NUM_CHANNELS, 32],  # 5x5 filter, depth 32.
+        tf.truncated_normal([32, 32, NUM_CHANNELS, 64],  # 5x5 filter, depth 32.
                             stddev=0.1,
                             seed=SEED))
-    conv1_biases = tf.Variable(tf.zeros([32]))
+    conv1_biases = tf.Variable(tf.zeros([64]))
+
     conv2_weights = tf.Variable(
-        tf.truncated_normal([5, 5, 32, 64],
+        tf.truncated_normal([8, 8, 64, 112],
                             stddev=0.1,
                             seed=SEED))
-    conv2_biases = tf.Variable(tf.constant(0.1, shape=[64]))
+    conv2_biases = tf.Variable(tf.constant(0.1, shape=[112]))
+
+    conv3_weights = tf.Variable(
+        tf.truncated_normal([6, 6, 112, 80],
+                            stddev=0.1,
+                            seed=SEED))
+    conv3_biases = tf.Variable(tf.constant(0.1, shape=[80]))
+   
     fc1_weights = tf.Variable(  # fully connected, depth 512.
-        tf.truncated_normal([int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 64), 512],
+        #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
+        tf.truncated_normal([int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80), 4096],
                             stddev=0.1,
                             seed=SEED))
-    fc1_biases = tf.Variable(tf.constant(0.1, shape=[512]))
-    fc2_weights = tf.Variable(
-        tf.truncated_normal([512, NUM_LABELS],
+    fc1_biases = tf.Variable(tf.constant(0.1, shape=[4096]))
+
+    fc2_weights = tf.Variable(  # fully connected, depth 512.
+        tf.truncated_normal([4096, 768],
                             stddev=0.1,
                             seed=SEED))
-    fc2_biases = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]))
+    fc2_biases  = tf.Variable(tf.constant(0.1, shape=[768]))
+
+    fc3_weights = tf.Variable(
+        tf.truncated_normal([768, NUM_LABELS],
+                            stddev=0.1,
+                            seed=SEED))
+    fc3_biases = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]))
 
     # Make an image summary for 4d tensor image with index idx
     def get_image_summary(img, idx = 0):
@@ -364,7 +395,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         # shape matches the data layout: [image index, y, x, depth].
         conv = tf.nn.conv2d(data,
                             conv1_weights,
-                            strides=[1, 1, 1, 1],
+                            strides=[1, 4, 4, 1], #changed to stride=4
                             padding='SAME')
         # Bias and rectified linear non-linearity.
         relu = tf.nn.relu(tf.nn.bias_add(conv, conv1_biases))
@@ -380,10 +411,12 @@ def main(argv=None):  # pylint: disable=unused-argument
                             strides=[1, 1, 1, 1],
                             padding='SAME')
         relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_biases))
-        pool2 = tf.nn.max_pool(relu2,
-                              ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1],
-                              padding='SAME')
+
+        conv3 = tf.nn.conv2d(relu2,
+                            conv3_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu3 = tf.nn.relu(tf.nn.bias_add(conv3,conv3_biases))
 
         # Uncomment these lines to check the size of each layer
         #print('data ' + str(data.get_shape()))
@@ -392,24 +425,22 @@ def main(argv=None):  # pylint: disable=unused-argument
         #print('pool ' + str(pool.get_shape()))
         #print('pool2 ' + str(pool2.get_shape()))
 
-
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
         # fully connected layers.
-        pool_shape = pool2.get_shape().as_list()
-        print(pool2)
-        print(pool2.shape)
-        print(type(pool2))
+        relu_shape = relu3.get_shape().as_list()
         reshape = tf.reshape(
-            pool2,
-            [pool_shape[0], pool_shape[1] * pool_shape[2] * pool_shape[3]])
+            relu3,
+            [relu_shape[0], relu_shape[1] * relu_shape[2] * relu_shape[3]])
         # Fully connected layer. Note that the '+' operation automatically
         # broadcasts the biases.
-        hidden = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
+        hidden1 = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
+        
+        hidden2 = tf.nn.relu(tf.matmul(hidden1,fc2_weights) + fc2_biases)
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.
-        #if train:
-        #    hidden = tf.nn.dropout(hidden, 0.5, seed=SEED)
-        out = tf.matmul(hidden, fc2_weights) + fc2_biases
+        if train:
+            hidden = tf.nn.dropout(hidden1, 0.5, seed=SEED)
+        out = tf.matmul(hidden2, fc3_weights) + fc3_biases
 
         if train == True:
             summary_id = '_0'
@@ -421,8 +452,8 @@ def main(argv=None):  # pylint: disable=unused-argument
             filter_summary3 = tf.summary.image('summary_pool' + summary_id, s_pool)
             s_conv2 = get_image_summary(conv2)
             filter_summary4 = tf.summary.image('summary_conv2' + summary_id, s_conv2)
-            s_pool2 = get_image_summary(pool2)
-            filter_summary5 = tf.summary.image('summary_pool2' + summary_id, s_pool2)
+            s_conv3 = get_image_summary(conv3)
+            filter_summary5 = tf.summary.image('summary_conv3'+summary_id,s_conv3)
 
         return out
 
@@ -433,8 +464,8 @@ def main(argv=None):  # pylint: disable=unused-argument
         logits=logits, labels=train_labels_node))
     tf.summary.scalar('loss', loss)
 
-    all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, fc1_weights, fc1_biases, fc2_weights, fc2_biases]
-    all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases']
+    all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, conv3_weights,conv3_biases, fc1_weights, fc1_biases, fc2_weights, fc2_biases, fc3_weights, fc3_biases]
+    all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 'conv3_weights','conv3_biases', 'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases', 'fc3_weights', 'fc3_biases']
     all_grads_node = tf.gradients(loss, all_params_node)
     all_grad_norms_node = []
     for i in range(0, len(all_grads_node)):
@@ -444,7 +475,8 @@ def main(argv=None):  # pylint: disable=unused-argument
     
     # L2 regularization for the fully connected parameters.
     regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases) +
-                    tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases))
+                    tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases) +
+                    tf.nn.l2_loss(fc3_weights) + tf.nn.l2_loss(fc3_biases))
     # Add the regularization term to the loss.
     loss += 5e-4 * regularizers
 
@@ -461,9 +493,18 @@ def main(argv=None):  # pylint: disable=unused-argument
     tf.summary.scalar('learning_rate', learning_rate)
     
     # Use simple momentum for the optimization.
-    optimizer = tf.train.MomentumOptimizer(learning_rate,
-                                           0.0).minimize(loss,
-                                                         global_step=batch)
+    #TODO Change optimizer
+
+    #AdaGrad
+    #optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss,global_step=batch)
+    #Momentum
+    #optimizer = tf.train.MomentumOptimizer(learning_rate,
+    #                                       momentum=0.2).minimize(loss,
+    #                                                     global_step=batch)
+    
+    #AdamOptimizer - adaptative momentum
+    optimizer = tf.train.AdamOptimizer(learning_rate,beta1= 0.9, beta2 = 0.999).minimize(loss,global_step=batch)
+
 
     # Predictions for the minibatch, validation set and test set.
     train_prediction = tf.nn.softmax(logits)
@@ -542,6 +583,7 @@ def main(argv=None):  # pylint: disable=unused-argument
                 print("Model saved in file: %s" % save_path)
 
 
+        #plotNNFilter(conv1_weights)
         print ("Running prediction on training set")
         prediction_training_dir = "predictions_training/"
         real_prediction = "myprediction/"
