@@ -20,15 +20,17 @@ import math
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
-TRAINING_SIZE = 1
+TRAINING_SIZE = 200
 VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
 #TODO change batch size
 BATCH_SIZE = 32 # 64
 #TODO change epoch number
 NUM_EPOCHS = 10
-RESTORE_MODEL = True # If True, restore existing model instead of training a new one
+RESTORE_MODEL = False # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
+DOWNSCALE = 1
+
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
@@ -82,8 +84,6 @@ def img_crop_context(im, w, h,context_factor):
                         
                         itery = itery + 1
                     iterx = iterx + 1
-
-
                 #print("INDEX: ["+str(j-context_factor)+":"+str(j+w+context_factor)+", "+str(i-context_factor)+":"+str(i+h+context_factor)+"]")
                 #im_patch = im[(j-context_factor):(j+w+context_factor), (i-context_factor):(i+h+context_factor)]
             else:
@@ -116,19 +116,22 @@ def extract_data(filename, num_images, context_factor):
     Values are rescaled from [0, 255] down to [-0.5, 0.5].
     """
     imgs = []
-    for i in range(1, num_images+1):
+    for i in range(101, num_images+1):
         imageid = "satImage_%.3d" % i
         image_filename = filename + imageid + ".png"
         if os.path.isfile(image_filename):
             print ('Loading ' + image_filename)
             img = mpimg.imread(image_filename)
+            #img = Image.open(image_filename)
+            #downscaled = img.resize((200,200)) #HARDCODED
+            #downscaled = numpy.asarray(downscaled)
             imgs.append(img)
         else:
             print ('File ' + image_filename + ' does not exist')
 
     num_images = len(imgs)
-    IMG_WIDTH = imgs[0].shape[0]
-    IMG_HEIGHT = imgs[0].shape[1]
+    IMG_WIDTH = int(imgs[0].shape[0]/DOWNSCALE)
+    IMG_HEIGHT = int(imgs[0].shape[1]/DOWNSCALE)
     N_PATCHES_PER_IMAGE = (IMG_WIDTH/IMG_PATCH_SIZE)*(IMG_HEIGHT/IMG_PATCH_SIZE)
 
 
@@ -149,11 +152,14 @@ def value_to_class(v):
 def extract_labels(filename, num_images, context_factor):
     """Extract the labels into a 1-hot matrix [image index, label index]."""
     gt_imgs = []
-    for i in range(1, num_images+1):
+    for i in range(101, num_images+1):
         imageid = "satImage_%.3d" % i
         image_filename = filename + imageid + ".png"
         if os.path.isfile(image_filename):
             print ('Loading ' + image_filename)
+            #img = Image.open(image_filename)
+            #downscaled = img.resize((200,200)) #HARDCODED
+            #downscaled = numpy.asarray(downscaled)
             img = mpimg.imread(image_filename)
             gt_imgs.append(img)
         else:
@@ -292,6 +298,8 @@ def main(argv=None):  # pylint: disable=unused-argument
         shape=(BATCH_SIZE, CONTEXT_PATCH, CONTEXT_PATCH, NUM_CHANNELS))
     train_labels_node = tf.placeholder(tf.float32,
                                        shape=(BATCH_SIZE, NUM_LABELS))
+
+
     train_all_data_node = tf.constant(train_data)
 
     # The variables below hold all the trainable weights. They are passed an
@@ -323,13 +331,13 @@ def main(argv=None):  # pylint: disable=unused-argument
    
     fc1_weights = tf.Variable(  # fully connected, depth 512.
         #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
-        tf.truncated_normal([256, 512],
+        tf.truncated_normal([256, 64],
                             stddev=0.1,
                             seed=SEED))
-    fc1_biases = tf.Variable(tf.constant(0.1, shape=[512]))
+    fc1_biases = tf.Variable(tf.constant(0.1, shape=[64]))
 
-    fc2_weights = tf.Variable(  # fully connected, depth 512.
-        tf.truncated_normal([512, NUM_LABELS],
+    fc2_weights = tf.Variable(  # fully connected, depth 64.
+        tf.truncated_normal([64, NUM_LABELS],
                             stddev=0.1,
                             seed=SEED))
     fc2_biases  = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]))
@@ -362,6 +370,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Get prediction for given input image 
     def get_prediction(img):
+       
         data = numpy.asarray(img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR))
         #print(data)
         #data2 = numpy.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE))
@@ -378,7 +387,6 @@ def main(argv=None):  # pylint: disable=unused-argument
         imageid = "satImage_%.3d" % image_idx
         image_filename = filename + imageid + ".png"
         img = mpimg.imread(image_filename)
-
         img_prediction = get_prediction(img)
         cimg = concatenate_images(img, img_prediction)
 
@@ -400,6 +408,9 @@ def main(argv=None):  # pylint: disable=unused-argument
 
         image_filename = filename +fname+"/"+fname+".png"
         img = mpimg.imread(image_filename)
+        #img = Image.open(image_filename)
+        #downscaled = img.resize((200,200)) #HARDCODED
+        #img = numpy.asarray(downscaled)
         img_prediction = get_prediction(img)
         return img_prediction
 
@@ -583,6 +594,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     #                                                     global_step=batch)
     
     #AdamOptimizer - adaptative momentum
+    #0.1 as recommended for imagenet
     optimizer = tf.train.AdamOptimizer(learning_rate,beta1= 0.9, beta2 = 0.999,epsilon=0.1).minimize(loss,global_step=batch)
 
 
@@ -602,6 +614,7 @@ def main(argv=None):  # pylint: disable=unused-argument
             print("Model restored.")
 
         else:
+            saver.restore(s,FLAGS.train_dir+"/model.ckpt")
             # Run all the initializers to prepare the trainable parameters.
             #tf.global_variables_initializer.run()
             tf.initialize_all_variables().run()
@@ -620,7 +633,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
                 # Permute training indices
                 perm_indices = numpy.random.permutation(training_indices)
-
                 for step in range (int(train_size / BATCH_SIZE)):
 
                     offset = (step * BATCH_SIZE) % (train_size - BATCH_SIZE)
@@ -673,13 +685,14 @@ def main(argv=None):  # pylint: disable=unused-argument
             os.mkdir(real_prediction)
         if not os.path.isdir(real_prediction+"result/"):
             os.mkdir(real_prediction+"result/")
-        for i in range(39,NUMFILES+1):
+        for i in range(1,NUMFILES+1):
             print("Prediction for img: "+str(i))
             #pimg = gtruth_pred(predict_dir, i)
             #Image.fromarray(pimg).save(real_prediction + "prediction_" + str(i) + ".png")
             #oimg = otruth_pred(predict_dir, i)
             #oimg.save(real_prediction + "overlay_" + str(i) + ".png")
             realoutput = generate_real_out(predict_dir,i)
+            realoutput = ((-1)*(realoutput-1)) 
             #need to multiply by 255 so its a real white pixel
             imgdata = Image.fromarray(255*realoutput)
             imgdata = imgdata.convert('RGB')

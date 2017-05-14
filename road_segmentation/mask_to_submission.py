@@ -10,7 +10,7 @@ foreground_threshold = 0.25 # percentage of pixels > 1 required to assign a fore
 # assign a label to a patch
 def patch_to_label(patch):
     df = np.mean(patch)
-    if df < foreground_threshold:
+    if df > foreground_threshold:
         return 1
     else:
         return 0
@@ -40,7 +40,7 @@ if __name__ == '__main__':
     submission_filename = 'dummy_submission.csv'
     image_filenames = []
     for i in range(1, 51):
-        image_filename = 'myprediction/result/prediction_' +  str(i) + '.png'
+        image_filename = 'felipe_prediction/result/prediction_' +  str(i) + '.png'
         print(image_filename)
         image_filenames.append(image_filename)
     masks_to_submission(submission_filename, *image_filenames)

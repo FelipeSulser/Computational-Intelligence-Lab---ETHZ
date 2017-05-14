@@ -9,34 +9,40 @@ import sys
 import urllib
 import matplotlib.image as mpimg
 from PIL import Image
-
+import matplotlib.pyplot as plt
 import code
-
 import tensorflow.python.platform
-
 import numpy
 import tensorflow as tf
+from scipy import ndimage
+import math
 
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
-TRAINING_SIZE = 100
+TRAINING_SIZE = 1
 VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
-BATCH_SIZE = 16 # 64
-NUM_EPOCHS = 8
+#TODO change batch size
+BATCH_SIZE = 32 # 64
+#TODO change epoch number
+NUM_EPOCHS = 10
 RESTORE_MODEL = True # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
-IMG_PATCH_SIZE = 16
+#TODO change patch size
+
+CONTEXT_ADDITIVE_FACTOR = 10 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
+IMG_PATCH_SIZE = 12 #8x8
+CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
 
 NUMFILES = 0
 NAMEFILES = []
 
-tf.app.flags.DEFINE_string('train_dir', 'datafiles_baseline_model',
+tf.app.flags.DEFINE_string('train_dir', 'datafiles',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 FLAGS = tf.app.flags.FLAGS
@@ -56,7 +62,56 @@ def img_crop(im, w, h):
             list_patches.append(im_patch)
     return list_patches
 
-def extract_data(filename, num_images):
+def img_crop_context(im, w, h,context_factor):
+    list_patches = []
+    imgwidth = im.shape[0]
+    imgheight = im.shape[1]
+    is_2d = len(im.shape) < 3
+    for i in range(0,imgheight,h):
+        for j in range(0,imgwidth,w):
+            if is_2d:
+                #im_patch = im[j:j+w, i:i+h]
+                im_patch = numpy.zeros((w+2*context_factor,h+2*context_factor))
+                iterx = 0
+                itery = 0
+                for x in range(j - context_factor,j+w+context_factor):
+                    itery = 0
+                    for y in range(i - context_factor,i+h+context_factor):
+                        if x >= 0 and y >= 0 and x < imgwidth and y < imgheight:
+                            im_patch[iterx,itery] = im[x,y]
+                        
+                        itery = itery + 1
+                    iterx = iterx + 1
+
+
+                #print("INDEX: ["+str(j-context_factor)+":"+str(j+w+context_factor)+", "+str(i-context_factor)+":"+str(i+h+context_factor)+"]")
+                #im_patch = im[(j-context_factor):(j+w+context_factor), (i-context_factor):(i+h+context_factor)]
+            else:
+                #im_patch = im[j:j+w, i:i+h, :]
+                #print("INDEX: ["+str(j-context_factor)+":"+str(j+w+context_factor)+", "+str(i-context_factor)+":"+str(i+h+context_factor)+"]")
+                #im_patch = im[(j-context_factor):(j+w+context_factor), (i-context_factor):(i+h+context_factor),:]
+                im_patch = numpy.zeros((w+2*context_factor,h+2*context_factor,3))
+                #print(im_patch.shape)
+                iterx = 0
+                itery = 0
+                for x in range(j - context_factor,j+w+context_factor):
+                    itery = 0
+                    for y in range(i - context_factor,i+h+context_factor):
+                        #print(str(x) + " "+str(y)+" and "+str(iterx)+" " + str(itery))
+                        if x >= 0 and y >= 0 and x < imgwidth and y < imgheight:
+                            im_patch[iterx,itery] = im[x,y,:]
+                        
+                        itery = itery + 1
+                    iterx = iterx + 1
+                #img_data = Image.fromarray(numpy.uint8(im_patch*255))
+                #plt.imshow(img_data)
+                #plt.show()
+            #print(im_patch)
+            list_patches.append(im_patch)
+    #print(list_patches[250][:,:,0])
+    return list_patches
+
+def extract_data(filename, num_images, context_factor):
     """Extract the images into a 4D tensor [image index, y, x, channels].
     Values are rescaled from [0, 255] down to [-0.5, 0.5].
     """
@@ -76,9 +131,9 @@ def extract_data(filename, num_images):
     IMG_HEIGHT = imgs[0].shape[1]
     N_PATCHES_PER_IMAGE = (IMG_WIDTH/IMG_PATCH_SIZE)*(IMG_HEIGHT/IMG_PATCH_SIZE)
 
-    img_patches = [img_crop(imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE) for i in range(num_images)]
-    data = [img_patches[i][j] for i in range(len(img_patches)) for j in range(len(img_patches[i]))]
 
+    img_patches = [img_crop_context(imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE,context_factor) for i in range(num_images)]
+    data = [img_patches[i][j] for i in range(len(img_patches)) for j in range(len(img_patches[i]))]
     return numpy.asarray(data)
         
 # Assign a label to a patch v
@@ -91,7 +146,7 @@ def value_to_class(v):
         return [1, 0]
 
 # Extract label images
-def extract_labels(filename, num_images):
+def extract_labels(filename, num_images, context_factor):
     """Extract the labels into a 1-hot matrix [image index, label index]."""
     gt_imgs = []
     for i in range(1, num_images+1):
@@ -105,7 +160,7 @@ def extract_labels(filename, num_images):
             print ('File ' + image_filename + ' does not exist')
 
     num_images = len(gt_imgs)
-    gt_patches = [img_crop(gt_imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE) for i in range(num_images)]
+    gt_patches = [img_crop_context(gt_imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE,context_factor) for i in range(num_images)]
     data = numpy.asarray([gt_patches[i][j] for i in range(len(gt_patches)) for j in range(len(gt_patches[i]))])
     labels = numpy.asarray([value_to_class(numpy.mean(data[i])) for i in range(len(data))])
 
@@ -183,7 +238,6 @@ def make_img_overlay(img, predicted_img):
     new_img = Image.blend(background, overlay, 0.2)
     return new_img
 
-
 def main(argv=None):  # pylint: disable=unused-argument
 
     data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
@@ -195,11 +249,11 @@ def main(argv=None):  # pylint: disable=unused-argument
     NUMFILES = len([name for name in os.listdir(predict_dir) if name != ".DS_Store"])
     NAMEFILES = [name for name in os.listdir(predict_dir) if name != ".DS_Store"]
 
-    train_data = extract_data(train_data_filename, TRAINING_SIZE)
-    train_labels = extract_labels(train_labels_filename, TRAINING_SIZE)
+    train_data = extract_data(train_data_filename, TRAINING_SIZE,CONTEXT_ADDITIVE_FACTOR)
+    print("Train data shape: "+str(train_data.shape))
+    train_labels = extract_labels(train_labels_filename, TRAINING_SIZE,CONTEXT_ADDITIVE_FACTOR)
 
     num_epochs = NUM_EPOCHS
-
     c0 = 0
     c1 = 0
     for i in range(len(train_labels)):
@@ -214,8 +268,6 @@ def main(argv=None):  # pylint: disable=unused-argument
     idx0 = [i for i, j in enumerate(train_labels) if j[0] == 1]
     idx1 = [i for i, j in enumerate(train_labels) if j[1] == 1]
     new_indices = idx0[0:min_c] + idx1[0:min_c]
-    print (len(new_indices))
-    print (train_data.shape)
     train_data = train_data[new_indices,:,:,:]
     train_labels = train_labels[new_indices]
 
@@ -237,7 +289,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     # training step using the {feed_dict} argument to the Run() call below.
     train_data_node = tf.placeholder(
         tf.float32,
-        shape=(BATCH_SIZE, IMG_PATCH_SIZE, IMG_PATCH_SIZE, NUM_CHANNELS))
+        shape=(BATCH_SIZE, CONTEXT_PATCH, CONTEXT_PATCH, NUM_CHANNELS))
     train_labels_node = tf.placeholder(tf.float32,
                                        shape=(BATCH_SIZE, NUM_LABELS))
     train_all_data_node = tf.constant(train_data)
@@ -246,25 +298,43 @@ def main(argv=None):  # pylint: disable=unused-argument
     # initial value which will be assigned when when we call:
     # {tf.initialize_all_variables().run()}
     conv1_weights = tf.Variable(
-        tf.truncated_normal([5, 5, NUM_CHANNELS, 32],  # 5x5 filter, depth 32.
+        tf.truncated_normal([5, 5, NUM_CHANNELS, 16],  # 5x5 filter, depth 32.
                             stddev=0.1,
                             seed=SEED))
-    conv1_biases = tf.Variable(tf.zeros([32]))
+    conv1_biases = tf.Variable(tf.zeros([16]))
+
     conv2_weights = tf.Variable(
-        tf.truncated_normal([5, 5, 32, 64],
+        tf.truncated_normal([3, 3, 16, 32],
                             stddev=0.1,
                             seed=SEED))
-    conv2_biases = tf.Variable(tf.constant(0.1, shape=[64]))
+    conv2_biases = tf.Variable(tf.zeros([32]))
+
+    conv3_weights = tf.Variable(
+        tf.truncated_normal([3, 3, 32, 32],
+                            stddev=0.1,
+                            seed=SEED))
+    conv3_biases = tf.Variable(tf.constant(0.1, shape=[32]))
+
+    conv4_weights = tf.Variable(
+        tf.truncated_normal([3,3,32,64],
+            stddev=0.1,
+            seed=SEED))
+    conv4_biases = tf.Variable(tf.constant(0.1,shape=[64]))
+   
     fc1_weights = tf.Variable(  # fully connected, depth 512.
-        tf.truncated_normal([int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 64), 512],
+        #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
+        tf.truncated_normal([256, 512],
                             stddev=0.1,
                             seed=SEED))
     fc1_biases = tf.Variable(tf.constant(0.1, shape=[512]))
-    fc2_weights = tf.Variable(
+
+    fc2_weights = tf.Variable(  # fully connected, depth 512.
         tf.truncated_normal([512, NUM_LABELS],
                             stddev=0.1,
                             seed=SEED))
-    fc2_biases = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]))
+    fc2_biases  = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]))
+
+
 
     # Make an image summary for 4d tensor image with index idx
     def get_image_summary(img, idx = 0):
@@ -292,16 +362,19 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Get prediction for given input image 
     def get_prediction(img):
-        data = numpy.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE))
+        data = numpy.asarray(img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR))
         #print(data)
+        #data2 = numpy.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE))
         data_node = tf.constant(data)
         output = tf.nn.softmax(model(data_node))
         output_prediction = s.run(output)
         print("OUTPUT PREDICTION")
-        print(output_prediction)
+        #print(output_prediction)
         print(output_prediction.shape)
+        print("DATA")
         print(data.shape)
         img_prediction = label_to_img(img.shape[0], img.shape[1], IMG_PATCH_SIZE, IMG_PATCH_SIZE, output_prediction)
+
         return img_prediction
 
     # Get a concatenation of the prediction and groundtruth for given input file
@@ -365,28 +438,60 @@ def main(argv=None):  # pylint: disable=unused-argument
         # 2D convolution, with 'SAME' padding (i.e. the output feature map has
         # the same size as the input). Note that {strides} is a 4D array whose
         # shape matches the data layout: [image index, y, x, depth].
+        data = tf.cast(data, dtype=tf.float32)
         conv = tf.nn.conv2d(data,
                             conv1_weights,
-                            strides=[1, 1, 1, 1],
+                            strides=[1, 1, 1, 1], #changed to stride=4
                             padding='SAME')
         # Bias and rectified linear non-linearity.
         relu = tf.nn.relu(tf.nn.bias_add(conv, conv1_biases))
+        print("relu1: "+str(relu.get_shape()))
         # Max pooling. The kernel size spec {ksize} also follows the layout of
         # the data. Here we have a pooling window of 2, and a stride of 2.
-        pool = tf.nn.max_pool(relu,
+        pool1 = tf.nn.max_pool(relu,
                               ksize=[1, 2, 2, 1],
                               strides=[1, 2, 2, 1],
                               padding='SAME')
 
-        conv2 = tf.nn.conv2d(pool,
+        print("Pool1: "+str(pool1.get_shape()))
+
+        conv2 = tf.nn.conv2d(pool1,
                             conv2_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
         relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_biases))
+        print("relu2: "+str(relu2.get_shape()))
         pool2 = tf.nn.max_pool(relu2,
-                              ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1],
-                              padding='SAME')
+                                ksize = [1,2,2,1],
+                                strides=[1,2,2,1],
+                                padding='SAME')
+
+        print("pool2: "+str(pool2.get_shape()))
+        conv3 = tf.nn.conv2d(pool2,
+                            conv3_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu3 = tf.nn.relu(tf.nn.bias_add(conv3,conv3_biases))
+        print("relu3: "+str(relu3.get_shape()))
+        pool3 = tf.nn.max_pool(relu3,
+                                ksize=[1,2,2,1],
+                                strides = [1,2,2,1],
+                                padding='SAME')
+        print("pool3: "+str(pool3.get_shape()))
+        conv4 = tf.nn.conv2d(pool3,
+                            conv4_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu4 = tf.nn.relu(tf.nn.bias_add(conv4,conv4_biases))
+        print("relu4: "+str(relu4.get_shape()))
+        pool4 = tf.nn.max_pool(relu4,
+                                ksize=[1,2,2,1],
+                                strides=[1,2,2,1],
+                                padding='SAME')
+        print("pool4: "+str(pool4.get_shape()))
+
+       
+
 
         # Uncomment these lines to check the size of each layer
         #print('data ' + str(data.get_shape()))
@@ -395,37 +500,44 @@ def main(argv=None):  # pylint: disable=unused-argument
         #print('pool ' + str(pool.get_shape()))
         #print('pool2 ' + str(pool2.get_shape()))
 
-
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
         # fully connected layers.
-        pool_shape = pool2.get_shape().as_list()
-        print(pool2)
-        print(pool2.shape)
-        print(type(pool2))
+        relu_shape = pool4.get_shape().as_list()
         reshape = tf.reshape(
-            pool2,
-            [pool_shape[0], pool_shape[1] * pool_shape[2] * pool_shape[3]])
+            pool4,
+            [relu_shape[0], relu_shape[1] * relu_shape[2] * relu_shape[3]])
         # Fully connected layer. Note that the '+' operation automatically
         # broadcasts the biases.
-        hidden = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
+        
+        #hidden1 = tf.layers.dense(inputs = reshape,units=1024,activation = tf.nn.relu)
+        hidden1 = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
+        
+        #hidden2 = tf.nn.relu(tf.matmul(hidden1,fc2_weights) + fc2_biases)
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.
         #if train:
-        #    hidden = tf.nn.dropout(hidden, 0.5, seed=SEED)
-        out = tf.matmul(hidden, fc2_weights) + fc2_biases
+        #    hidden = tf.nn.dropout(hidden1, 0.5, seed=SEED)
 
+        out = tf.matmul(hidden1, fc2_weights) + fc2_biases
+        #out = tf.layers.dense(inputs = hidden1, units=2)
         if train == True:
             summary_id = '_0'
             s_data = get_image_summary(data)
             filter_summary0 = tf.summary.image('summary_data' + summary_id, s_data)
             s_conv = get_image_summary(conv)
             filter_summary2 = tf.summary.image('summary_conv' + summary_id, s_conv)
-            s_pool = get_image_summary(pool)
-            filter_summary3 = tf.summary.image('summary_pool' + summary_id, s_pool)
+            s_pool1 = get_image_summary(pool1)
+            filter_summary3 = tf.summary.image('summary_pool' + summary_id, s_pool1)
             s_conv2 = get_image_summary(conv2)
             filter_summary4 = tf.summary.image('summary_conv2' + summary_id, s_conv2)
             s_pool2 = get_image_summary(pool2)
-            filter_summary5 = tf.summary.image('summary_pool2' + summary_id, s_pool2)
+            filter_summary5 = tf.summary.image('summary_pool' + summary_id, s_pool2)
+            s_conv3 = get_image_summary(conv3)
+            filter_summary6 = tf.summary.image('summary_conv3'+summary_id,s_conv3)
+            s_pool3 = get_image_summary(pool1)
+            filter_summary7 = tf.summary.image('summary_pool' + summary_id, s_pool3)
+            s_conv4 = get_image_summary(conv4)
+            filter_summary8 = tf.summary.image('summary_conv4'+summary_id,s_conv4)
 
         return out
 
@@ -436,8 +548,8 @@ def main(argv=None):  # pylint: disable=unused-argument
         logits=logits, labels=train_labels_node))
     tf.summary.scalar('loss', loss)
 
-    all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, fc1_weights, fc1_biases, fc2_weights, fc2_biases]
-    all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases']
+    all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, conv3_weights,conv3_biases,conv4_weights,conv4_biases, fc1_weights, fc1_biases, fc2_weights, fc2_biases]
+    all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 'conv3_weights','conv3_biases', 'conv4_weights','conv4_biases','fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases']
     all_grads_node = tf.gradients(loss, all_params_node)
     all_grad_norms_node = []
     for i in range(0, len(all_grads_node)):
@@ -461,12 +573,22 @@ def main(argv=None):  # pylint: disable=unused-argument
         train_size,          # Decay step.
         0.95,                # Decay rate.
         staircase=True)
+    #learning_rate = 0.01
     tf.summary.scalar('learning_rate', learning_rate)
     
     # Use simple momentum for the optimization.
-    optimizer = tf.train.MomentumOptimizer(learning_rate,
-                                           0.0).minimize(loss,
-                                                         global_step=batch)
+    #TODO Change optimizer
+
+    #AdaGrad
+    #optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss,global_step=batch)
+    #Momentum
+    #optimizer = tf.train.MomentumOptimizer(learning_rate,
+    #                                       momentum=0.2).minimize(loss,
+    #                                                     global_step=batch)
+    
+    #AdamOptimizer - adaptative momentum
+    optimizer = tf.train.AdamOptimizer(learning_rate,beta1= 0.9, beta2 = 0.999,epsilon=0.1).minimize(loss,global_step=batch)
+
 
     # Predictions for the minibatch, validation set and test set.
     train_prediction = tf.nn.softmax(logits)
@@ -545,9 +667,10 @@ def main(argv=None):  # pylint: disable=unused-argument
                 print("Model saved in file: %s" % save_path)
 
 
+        #plotNNFilter(conv1_weights)
         print ("Running prediction on training set")
         prediction_training_dir = "predictions_training/"
-        real_prediction = "baseline_prediction/"
+        real_prediction = "felipe_prediction/"
         if not os.path.isdir(prediction_training_dir):
             os.mkdir(prediction_training_dir)
         if not os.path.isdir(real_prediction):
@@ -555,10 +678,10 @@ def main(argv=None):  # pylint: disable=unused-argument
         if not os.path.isdir(real_prediction+"result/"):
             os.mkdir(real_prediction+"result/")
         for i in range(1,NUMFILES+1):
-            pimg = gtruth_pred(predict_dir, i)
-            Image.fromarray(pimg).save(real_prediction + "prediction_" + str(i) + ".png")
-            oimg = otruth_pred(predict_dir, i)
-            oimg.save(real_prediction + "overlay_" + str(i) + ".png")
+            #pimg = gtruth_pred(predict_dir, i)
+            #Image.fromarray(pimg).save(real_prediction + "prediction_" + str(i) + ".png")
+            #oimg = otruth_pred(predict_dir, i)
+            #oimg.save(real_prediction + "overlay_" + str(i) + ".png")
             realoutput = generate_real_out(predict_dir,i)
             #need to multiply by 255 so its a real white pixel
             Image.fromarray(255*realoutput).convert('RGB').save(real_prediction+"result/"+"prediction_"+str(i)+".png")
