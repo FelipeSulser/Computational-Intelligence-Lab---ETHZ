@@ -20,7 +20,7 @@ import math
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
-TRAINING_SIZE = 200
+TRAINING_SIZE = 100
 VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
 #TODO change batch size
@@ -64,6 +64,7 @@ def img_crop(im, w, h):
             list_patches.append(im_patch)
     return list_patches
 
+#context_factor is the extension per direction
 def img_crop_context(im, w, h,context_factor):
     list_patches = []
     imgwidth = im.shape[0]
@@ -116,7 +117,7 @@ def extract_data(filename, num_images, context_factor):
     Values are rescaled from [0, 255] down to [-0.5, 0.5].
     """
     imgs = []
-    for i in range(101, num_images+1):
+    for i in range(1, num_images+1):
         imageid = "satImage_%.3d" % i
         image_filename = filename + imageid + ".png"
         if os.path.isfile(image_filename):
@@ -144,15 +145,15 @@ def value_to_class(v):
     foreground_threshold = 0.25 # percentage of pixels > 1 required to assign a foreground label to a patch
     df = numpy.sum(v)
     if df > foreground_threshold:
-        return [0, 1]
-    else:
         return [1, 0]
+    else:
+        return [0, 1]
 
 # Extract label images
 def extract_labels(filename, num_images, context_factor):
     """Extract the labels into a 1-hot matrix [image index, label index]."""
     gt_imgs = []
-    for i in range(101, num_images+1):
+    for i in range(1, num_images+1):
         imageid = "satImage_%.3d" % i
         image_filename = filename + imageid + ".png"
         if os.path.isfile(image_filename):
@@ -555,8 +556,18 @@ def main(argv=None):  # pylint: disable=unused-argument
         logits=logits, labels=train_labels_node))
     tf.summary.scalar('loss', loss)
 
-    all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, conv3_weights,conv3_biases,conv4_weights,conv4_biases, fc1_weights, fc1_biases, fc2_weights, fc2_biases]
-    all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 'conv3_weights','conv3_biases', 'conv4_weights','conv4_biases','fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases']
+    all_params_node = [conv1_weights, conv1_biases, 
+                        conv2_weights, conv2_biases, 
+                        conv3_weights,conv3_biases,
+                        conv4_weights,conv4_biases, 
+                        fc1_weights, fc1_biases, 
+                        fc2_weights, fc2_biases]
+    all_params_names = ['conv1_weights', 'conv1_biases', 
+                        'conv2_weights', 'conv2_biases', 
+                        'conv3_weights','conv3_biases', 
+                        'conv4_weights','conv4_biases',
+                        'fc1_weights', 'fc1_biases', 
+                        'fc2_weights', 'fc2_biases']
     all_grads_node = tf.gradients(loss, all_params_node)
     all_grad_norms_node = []
     for i in range(0, len(all_grads_node)):
@@ -583,19 +594,12 @@ def main(argv=None):  # pylint: disable=unused-argument
     #learning_rate = 0.01
     tf.summary.scalar('learning_rate', learning_rate)
     
-    # Use simple momentum for the optimization.
-    #TODO Change optimizer
 
-    #AdaGrad
-    #optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss,global_step=batch)
-    #Momentum
-    #optimizer = tf.train.MomentumOptimizer(learning_rate,
-    #                                       momentum=0.2).minimize(loss,
-    #                                                     global_step=batch)
-    
+    #TODO Change optimizer
     #AdamOptimizer - adaptative momentum
     #0.1 as recommended for imagenet
-    optimizer = tf.train.AdamOptimizer(learning_rate,beta1= 0.9, beta2 = 0.999,epsilon=0.1).minimize(loss,global_step=batch)
+    optimizer = tf.train.AdamOptimizer(
+        learning_rate,beta1= 0.9, beta2 = 0.999,epsilon=0.1).minimize(loss,global_step=batch)
 
 
     # Predictions for the minibatch, validation set and test set.
@@ -614,7 +618,7 @@ def main(argv=None):  # pylint: disable=unused-argument
             print("Model restored.")
 
         else:
-            saver.restore(s,FLAGS.train_dir+"/model.ckpt")
+            
             # Run all the initializers to prepare the trainable parameters.
             #tf.global_variables_initializer.run()
             tf.initialize_all_variables().run()
@@ -678,7 +682,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         #plotNNFilter(conv1_weights)
         print ("Running prediction on training set")
         prediction_training_dir = "predictions_training/"
-        real_prediction = "felipe_prediction/"
+        real_prediction = "test_prediction/"
         if not os.path.isdir(prediction_training_dir):
             os.mkdir(prediction_training_dir)
         if not os.path.isdir(real_prediction):
@@ -692,7 +696,7 @@ def main(argv=None):  # pylint: disable=unused-argument
             #oimg = otruth_pred(predict_dir, i)
             #oimg.save(real_prediction + "overlay_" + str(i) + ".png")
             realoutput = generate_real_out(predict_dir,i)
-            realoutput = ((-1)*(realoutput-1)) 
+            realoutput = (realoutput-1)
             #need to multiply by 255 so its a real white pixel
             imgdata = Image.fromarray(255*realoutput)
             imgdata = imgdata.convert('RGB')
