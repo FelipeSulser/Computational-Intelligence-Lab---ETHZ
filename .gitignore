@@ -1,1 +1,5 @@
 ex6/twitter-datasets/
+road_segmentation/training/
+road_segmentation/test_set_images/
+road_segmentation/predictions_training/
+road_segmentation/predictions_test/
