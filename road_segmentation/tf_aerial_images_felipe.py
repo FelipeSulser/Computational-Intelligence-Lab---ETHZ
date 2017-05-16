@@ -21,31 +21,39 @@ import math
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
+
 VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
 #TODO change batch size
 BATCH_SIZE = 32 # 64
 #TODO change epoch number
-NUM_EPOCHS = 10
-RESTORE_MODEL = False # If True, restore existing model instead of training a new one
+NUM_EPOCHS = 8
+RESTORE_MODEL = True # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
-MODE = 'predict' # 'train' or 'predict'
+MODE = 'train' # 'train' or 'predict'
 STARTING_ID = 1 # 21, 41...
-TRAINING_SIZE = 5
+TRAINING_SIZE = 50
+
+
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
 #TODO change patch size
 
-CONTEXT_ADDITIVE_FACTOR = 8 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
-IMG_PATCH_SIZE = 16 #8x8
+CONTEXT_ADDITIVE_FACTOR = 15 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
+IMG_PATCH_SIZE = 10 #8x8
 CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
+
+POOL_DIM_RED = 2     # defines by what factor pooling reduces the dimensions
+
 
 NUMFILES = 0
 NAMEFILES = []
+
+
 
 tf.app.flags.DEFINE_string('train_dir', 'datafiles',
                            """Directory where to write event logs """
@@ -67,6 +75,7 @@ def img_crop(im, w, h):
             list_patches.append(im_patch)
     return list_patches
 
+
 # Extract patches from a given image
 # the patch itself should be (w+2*context_factor,h+2*context_factor)
 # but the base used for labeling should be (w,h)
@@ -74,20 +83,24 @@ def img_crop_context(im, w, h,context_factor):
     cf = context_factor
     is_2d = len(im.shape) < 3
     if is_2d:
-        padded_img = numpy.pad(im, ((cf,cf),(cf,cf)), 'constant')
+        padded_img = numpy.pad(im, cf, 'constant')
     else:
         padded_img = numpy.pad(im, ((cf,cf),(cf,cf),(0,0)), 'constant')
 
     list_patches = []
     imgwidth = padded_img.shape[0]
     imgheight = padded_img.shape[1]
-    
+    #print('padded_img: ', padded_img.shape)
     for i in range(cf,imgheight-cf,h):
         for j in range(cf,imgwidth-cf,w):
             if is_2d:
                 im_patch = padded_img[j-cf:j+w+cf, i-cf:i+h+cf]
             else:
                 im_patch = padded_img[j-cf:j+w+cf, i-cf:i+h+cf, :]
+            #if im_patch.shape[0] != CONTEXT_PATCH or im_patch.shape[1] != CONTEXT_PATCH:
+            #    print('i,j: ', i,j)
+            #    print(im_patch.shape)
+
             list_patches.append(im_patch)
 
     return list_patches
@@ -167,8 +180,13 @@ def extract_data(filename, num_images, starting_id, context_factor):
 
 
     img_patches = [img_crop_context(imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE,context_factor) for i in range(num_images)]
+    print('img_patches: ', len(img_patches))
+    print('img_patches[0]: ', len(img_patches[0]))
+    print('img_patches[0][0]: ', img_patches[0][0].shape)
     data = [img_patches[i][j] for i in range(len(img_patches)) for j in range(len(img_patches[i]))]
-    return numpy.asarray(data)
+    print('data[0]: ', data[0].shape)
+    data = numpy.asarray(data)
+    return data
         
 # Assign a label to a patch v
 def value_to_class(v):
@@ -285,17 +303,18 @@ def main(argv=None):  # pylint: disable=unused-argument
     train_labels_filename = data_dir + 'groundtruth/' 
     test_set_dir = (os.path.dirname(os.path.realpath(__file__)))+'/test_set_images/'
     # Extract it into numpy arrays.
-    
+
     NUMFILES = len([name for name in os.listdir(test_set_dir) if name != ".DS_Store"])
     NAMEFILES = [name for name in os.listdir(test_set_dir) if name != ".DS_Store"]
 
     num_epochs = NUM_EPOCHS
 
 
-    train_data = extract_data(train_data_filename, TRAINING_SIZE, STARTING_ID, CONTEXT_ADDITIVE_FACTOR)
-    print("Train data shape: "+str(train_data.shape))
-    train_labels = extract_labels(train_labels_filename, TRAINING_SIZE, STARTING_ID, CONTEXT_ADDITIVE_FACTOR)
 
+    train_data = extract_data(train_data_filename, TRAINING_SIZE, STARTING_ID, CONTEXT_ADDITIVE_FACTOR)
+    train_labels = extract_labels(train_labels_filename, TRAINING_SIZE, STARTING_ID, CONTEXT_ADDITIVE_FACTOR)
+    print("Train data shape: ", train_data.shape)
+    print("Train labels shape: ", train_labels.shape)
     
     c0 = 0
     c1 = 0
@@ -366,9 +385,11 @@ def main(argv=None):  # pylint: disable=unused-argument
                             seed=SEED), name='conv4_weights')
     conv4_biases = tf.Variable(tf.constant(0.1,shape=[64]), name='conv4_biases')
    
+
+
     fc1_weights = tf.Variable(  # fully connected, depth 512.
         #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
-        tf.truncated_normal([256, 64],
+        tf.truncated_normal([576, 64],
                             stddev=0.1,
                             seed=SEED), name='fc1_weights')
     fc1_biases = tf.Variable(tf.constant(0.1, shape=[64]), name='fc1_biases')
@@ -592,18 +613,12 @@ def main(argv=None):  # pylint: disable=unused-argument
         logits=logits, labels=train_labels_node))
     tf.summary.scalar('loss', loss)
 
-    all_params_node = [conv1_weights, conv1_biases, 
-                        conv2_weights, conv2_biases, 
-                        conv3_weights,conv3_biases,
-                        conv4_weights,conv4_biases, 
-                        fc1_weights, fc1_biases, 
-                        fc2_weights, fc2_biases]
-    all_params_names = ['conv1_weights', 'conv1_biases', 
-                        'conv2_weights', 'conv2_biases', 
-                        'conv3_weights','conv3_biases', 
-                        'conv4_weights','conv4_biases',
-                        'fc1_weights', 'fc1_biases', 
-                        'fc2_weights', 'fc2_biases']
+    all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, 
+                    conv3_weights, conv3_biases, conv4_weights, conv4_biases, 
+                    fc1_weights, fc1_biases, fc2_weights, fc2_biases]
+    all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 
+                    'conv3_weights','conv3_biases', 'conv4_weights','conv4_biases',
+                    'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases']
     all_grads_node = tf.gradients(loss, all_params_node)
     all_grad_norms_node = []
     for i in range(0, len(all_grads_node)):
@@ -630,12 +645,22 @@ def main(argv=None):  # pylint: disable=unused-argument
     #learning_rate = 0.01
     tf.summary.scalar('learning_rate', learning_rate)
     
-
+    # Use simple momentum for the optimization.
     #TODO Change optimizer
+
+    #AdaGrad
+    #optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss,global_step=batch)
+    #Momentum
+    #optimizer = tf.train.MomentumOptimizer(learning_rate,
+    #                                       momentum=0.2).minimize(loss,
+    #                                                     global_step=batch)
+    
     #AdamOptimizer - adaptative momentum
-    #0.1 as recommended for imagenet
-    optimizer = tf.train.AdamOptimizer(
-        learning_rate,beta1= 0.9, beta2 = 0.999,epsilon=0.1).minimize(loss,global_step=batch)
+    # learning_rate: 1e-4 is very often used. ADAM chooses itsself a learning rate, 
+    #               so tf.train.exponential_decay might not be a good idea
+    # epsilon: 0.1 as recommended for imagenet
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, 
+            beta1= 0.9, beta2 = 0.999,epsilon=0.1).minimize(loss,global_step=batch)
 
 
     # Predictions for the minibatch, validation set and test set.
@@ -655,6 +680,7 @@ def main(argv=None):  # pylint: disable=unused-argument
             # Restore variables from disk.
             saver.restore(s, FLAGS.train_dir + "/model.ckpt")
             print("Model restored.")
+
 
             #plotNNFilter(conv1_weights)
             print ("Running prediction on training set")
@@ -699,10 +725,11 @@ def main(argv=None):  # pylint: disable=unused-argument
                 saver.restore(s, FLAGS.train_dir + "/model.ckpt")
 
 
+
             # Build the summary operation based on the TF collection of Summaries.
             summary_op = tf.summary.merge_all()
             summary_writer = tf.summary.FileWriter(FLAGS.train_dir,
-                                                    graph_def=s.graph_def)
+                                                    graph=s.graph)
             
             # Loop through training steps.
             print ('Total number of iterations = ' + str(int(num_epochs * train_size / BATCH_SIZE)))
@@ -754,8 +781,6 @@ def main(argv=None):  # pylint: disable=unused-argument
                 save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
                 print("Model saved in file: %s" % save_path)
 
-
-        
 
 
          

@@ -90,7 +90,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     # it must have shape (x, x, NUM_CHANNELS, 1)
     corner = -1
     edge = -1
-    center = 1
+    center = 2
     
     conv_filter1 = tf.constant([ 
     	[corner,edge,corner],

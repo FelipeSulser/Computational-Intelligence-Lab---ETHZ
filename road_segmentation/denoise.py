@@ -1,36 +1,3 @@
-"""
-=========================================
-Image denoising using dictionary learning
-=========================================
-
-An example comparing the effect of reconstructing noisy fragments
-of a raccoon face image using firstly online :ref:`DictionaryLearning` and
-various transform methods.
-
-The dictionary is fitted on the distorted left half of the image, and
-subsequently used to reconstruct the right half. Note that even better
-performance could be achieved by fitting to an undistorted (i.e.
-noiseless) image, but here we start from the assumption that it is not
-available.
-
-A common practice for evaluating the results of image denoising is by looking
-at the difference between the reconstruction and the original image. If the
-reconstruction is perfect this will look like Gaussian noise.
-
-It can be seen from the plots that the results of :ref:`omp` with two
-non-zero coefficients is a bit less biased than when keeping only one
-(the edges look less prominent). It is in addition closer from the ground
-truth in Frobenius norm.
-
-The result of :ref:`least_angle_regression` is much more strongly biased: the
-difference is reminiscent of the local intensity value of the original image.
-
-Thresholding is clearly not useful for denoising, but it is here to show that
-it can produce a suggestive output with very high speed, and thus be useful
-for other tasks such as object classification, where performance is not
-necessarily related to visualisation.
-"""
-print(__doc__)
 
 from time import time
 import matplotlib.image as mpimg
@@ -38,141 +5,97 @@ import matplotlib.pyplot as plt
 import numpy as np
 import scipy as sp
 import os
+import scipy.misc
 from sklearn.decomposition import MiniBatchDictionaryLearning
 from sklearn.feature_extraction.image import extract_patches_2d
 from sklearn.feature_extraction.image import reconstruct_from_patches_2d
-from sklearn.utils.testing import SkipTest
 from sklearn.utils.fixes import sp_version
+from skimage import data, img_as_float
+
+NEIGHBOOR_TO_CONSIDER = 8
+BALCK_TH = int(0.75 * NEIGHBOOR_TO_CONSIDER)
+WHITE_TH = int(0.25 * NEIGHBOOR_TO_CONSIDER)
+
 
 def rgb2gray(rgb):
     return np.dot(rgb[...,:3], [0.299, 0.587, 0.114])
+def remove_filtering_neighbors(img,black_threshold, block_size = 16):
+    #img is b&w array with 0 or 1
+    imgwidth = img.shape[0]
+    imgheight = img.shape[1]
+    
+    numblockwidth = int(imgwidth/block_size)
 
-if sp_version < (0, 12):
-    raise SkipTest("Skipping because SciPy version earlier than 0.12.0 and "
-                   "thus does not include the scipy.misc.face() image.")
+    numblockheight = int(imgheight/block_size)
 
-###############################################################################
-try:
-    from scipy import misc
-    face = misc.face(gray=True)
-except AttributeError:
-    # Old versions of scipy have face in the top level package
-    face = sp.face(gray=True)
+    for i in range(1,numblockwidth-1):
+        for j in range(1, numblockheight-1):
+            pixel_i = i*block_size
+            pixel_j = j*block_size
 
-mydir = os.path.dirname(os.path.realpath(__file__))
-face = mpimg.imread(mydir+'/prediction.png')
-face = rgb2gray(face)
-# Convert from uint8 representation with values between 0 and 255 to
-# a floating point representation with values between 0 and 1.
-face = face / 255
+            if img[pixel_i,pixel_j] == 0: #if patch is black
+                #if not surrounded by 3 cut it
+                neighbors = np.zeros(8)
 
-# downsample for higher speed
-face = face[::2, ::2] + face[1::2, ::2] + face[::2, 1::2] + face[1::2, 1::2]
-face /= 4.0
-height, width = face.shape
+                #black is 0
 
-# Distort the right half of the image
-print('Distorting image...')
-distorted = face.copy()
-distorted[:, width // 2:] += 0.075 * np.random.randn(height, width // 2)
+                neighbors[0] = img[pixel_i-block_size,pixel_j]
+                neighbors[1] = img[pixel_i+block_size,pixel_j]
+                neighbors[2] = img[pixel_i,pixel_j-block_size]
+                neighbors[3] = img[pixel_i,pixel_j+block_size]
+                neighbors[4] = img[pixel_i-block_size,pixel_j-block_size]
+                neighbors[5] = img[pixel_i-block_size,pixel_j+block_size]
+                neighbors[6] = img[pixel_i+block_size,pixel_j-block_size]
+                neighbors[7] = img[pixel_i+block_size,pixel_j+block_size]
 
-# Extract all reference patches from the left half of the image
-print('Extracting reference patches...')
-t0 = time()
-patch_size = (7, 7)
-data = extract_patches_2d(distorted[:, :width // 2], patch_size)
-data = data.reshape(data.shape[0], -1)
-data -= np.mean(data, axis=0)
-data /= np.std(data, axis=0)
-print('done in %.2fs.' % (time() - t0))
+                sum_val = np.sum(neighbors)
+                if(sum_val > black_threshold):
+                    #repaint block
+                    for xx in range(0,block_size):
+                        for yy in range(0,block_size):
+                            img[pixel_i+xx,pixel_j+yy] = 1.0
+            else: #white patch 1
+                #if not surrounded by 3 cut it
+                neighbors = np.zeros(8)
 
-###############################################################################
-# Learn the dictionary from reference patches
+                #black is 0
 
-print('Learning the dictionary...')
-t0 = time()
-dico = MiniBatchDictionaryLearning(n_components=100, alpha=1, n_iter=500)
-V = dico.fit(data).components_
-dt = time() - t0
-print('done in %.2fs.' % dt)
-
-plt.figure(figsize=(4.2, 4))
-for i, comp in enumerate(V[:100]):
-    plt.subplot(10, 10, i + 1)
-    plt.imshow(comp.reshape(patch_size), cmap=plt.cm.gray_r,
-               interpolation='nearest')
-    plt.xticks(())
-    plt.yticks(())
-plt.suptitle('Dictionary learned from face patches\n' +
-             'Train time %.1fs on %d patches' % (dt, len(data)),
-             fontsize=16)
-plt.subplots_adjust(0.08, 0.02, 0.92, 0.85, 0.08, 0.23)
+                neighbors[0] = img[pixel_i-block_size,pixel_j]
+                neighbors[1] = img[pixel_i+block_size,pixel_j]
+                neighbors[2] = img[pixel_i,pixel_j-block_size]
+                neighbors[3] = img[pixel_i,pixel_j+block_size]
+                neighbors[4] = img[pixel_i-block_size,pixel_j-block_size]
+                neighbors[5] = img[pixel_i-block_size,pixel_j+block_size]
+                neighbors[6] = img[pixel_i+block_size,pixel_j-block_size]
+                neighbors[7] = img[pixel_i+block_size,pixel_j+block_size]
 
 
-###############################################################################
-# Display the distorted image
+                sum_val = np.sum(neighbors)
+                wh_threshold = NEIGHBOOR_TO_CONSIDER-black_threshold
+                if(sum_val <= wh_threshold):
+                    #repaint block
+                    for xx in range(0,block_size):
+                        for yy in range(0,block_size):
+                            img[pixel_i+xx,pixel_j+yy] = 0.0
 
-def show_with_diff(image, reference, title):
-    """Helper function to display denoising"""
-    plt.figure(figsize=(5, 3.3))
-    plt.subplot(1, 2, 1)
-    plt.title('Image')
-    plt.imshow(image, vmin=0, vmax=1, cmap=plt.cm.gray,
-               interpolation='nearest')
-    plt.xticks(())
-    plt.yticks(())
-    plt.subplot(1, 2, 2)
-    difference = image - reference
+    return img
+save_dir = "predictions_test/result_denoised/"
+if not os.path.isdir(save_dir):
+    os.mkdir(save_dir) 
+for i in range(1, 51):
+    mydir = "predictions_test/result/"
+    imageid = "prediction_"+str(i)
+    image_filename = mydir +imageid+ ".png"
+    img = mpimg.imread(image_filename)
+    img = rgb2gray(img)
 
-    plt.title('Difference (norm: %.2f)' % np.sqrt(np.sum(difference ** 2)))
-    plt.imshow(difference, vmin=-0.5, vmax=0.5, cmap=plt.cm.PuOr,
-               interpolation='nearest')
-    plt.xticks(())
-    plt.yticks(())
-    plt.suptitle(title, size=16)
-    plt.subplots_adjust(0.02, 0.02, 0.98, 0.79, 0.02, 0.2)
+    img_denoised = remove_filtering_neighbors(img, BALCK_TH)
+    save_str = save_dir+imageid+".png"
+    scipy.misc.imsave(save_str,img_denoised)
 
-show_with_diff(distorted, face, 'Distorted image')
 
-###############################################################################
-# Extract noisy patches and reconstruct them using the dictionary
 
-print('Extracting noisy patches... ')
-t0 = time()
-data = extract_patches_2d(distorted[:, width // 2:], patch_size)
-data = data.reshape(data.shape[0], -1)
-intercept = np.mean(data, axis=0)
-data -= intercept
-print('done in %.2fs.' % (time() - t0))
 
-transform_algorithms = [
-    ('Orthogonal Matching Pursuit\n1 atom', 'omp',
-     {'transform_n_nonzero_coefs': 1}),
-    ('Orthogonal Matching Pursuit\n2 atoms', 'omp',
-     {'transform_n_nonzero_coefs': 2}),
-    ('Least-angle regression\n5 atoms', 'lars',
-     {'transform_n_nonzero_coefs': 5}),
-    ('Thresholding\n alpha=0.1', 'threshold', {'transform_alpha': .1})]
 
-reconstructions = {}
-for title, transform_algorithm, kwargs in transform_algorithms:
-    print(title + '...')
-    reconstructions[title] = face.copy()
-    t0 = time()
-    dico.set_params(transform_algorithm=transform_algorithm, **kwargs)
-    code = dico.transform(data)
-    patches = np.dot(code, V)
 
-    patches += intercept
-    patches = patches.reshape(len(data), *patch_size)
-    if transform_algorithm == 'threshold':
-        patches -= patches.min()
-        patches /= patches.max()
-    reconstructions[title][:, width // 2:] = reconstruct_from_patches_2d(
-        patches, (height, width // 2))
-    dt = time() - t0
-    print('done in %.2fs.' % dt)
-    show_with_diff(reconstructions[title], face,
-                   title + ' (time: %.1fs)' % dt)
 
-plt.show()
