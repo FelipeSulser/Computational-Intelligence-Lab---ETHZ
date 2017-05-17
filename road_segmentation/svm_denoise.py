@@ -70,8 +70,8 @@ else:
     clf = svm.SVC(C=1.0,kernel='rbf')
     clf = joblib.load('svcmodel.pkl')
     #now predict
-    predict_img_path = "/Users/felipesulser/Dropbox/ETH/CIL/TensorFlow/predictions_test/result/"
-    output_img_path = "/Users/felipesulser/Dropbox/ETH/CIL/TensorFlow/predictions_test/result_denoised/"
+    predict_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result/"
+    output_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_denoised/"
     print("Predicting patches")
     for i in range(1,51):
         imageid = "prediction_"+str(i)
