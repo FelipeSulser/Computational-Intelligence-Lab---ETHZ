@@ -12,55 +12,65 @@ from skimage import feature
 from skimage import data, img_as_float
 from skimage import exposure
 from skimage import filters
-
-MODE = 'test'
-
+import pywt
+import math
 
 
 @adapt_rgb(hsv_value)
 def scharr_each(image):
     return filters.scharr(image)
 
-if MODE == 'train':
-    save_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/sharp_training/'
-elif MODE == 'test':
-    save_dir = (os.path.dirname(os.path.realpath(__file__)))+'/test_set_images_filtered/'
-
+save_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/sharp_training/'
 if not os.path.isdir(save_dir):
-	os.mkdir(save_dir) 
+    os.mkdir(save_dir) 
 
 
 
 imgs = []
-if MODE == 'train':
-    data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
-    train_data_filename = data_dir + 'images/'
-    range_max = 201
-elif MODE == 'test':
-    train_data_filename = (os.path.dirname(os.path.realpath(__file__)))+'/test_set_images/'    
-    range_max = 51
+data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
+train_data_filename = data_dir + 'images/'
+train_labels_filename = data_dir + 'groundtruth/' 
 
-for i in range(1, range_max):
+for i in range(1, 201):
     imageid = "satImage_%.3d" % i
-    if MODE == 'train':
-        image_filename = train_data_filename + imageid + ".png"
-    elif MODE == 'test':  
-        fname = "test_"+str(i)  
-        image_filename = train_data_filename + fname + '/' + fname + ".png"
+    image_filename = train_data_filename + imageid + ".png"
 
     if os.path.isfile(image_filename):
         img = mpimg.imread(image_filename)
-        p2, p98 = np.percentile(img, (2, 98))
-        img_rescale = exposure.rescale_intensity(img, in_range=(p2, p98))
-        img_eq = exposure.equalize_hist(img)
-        img_eq = img_as_float(img_eq)
-        if MODE == 'train':
-            scipy.misc.imsave(save_dir+imageid+".png",img_eq)
-        elif MODE == 'test':
-            dist_fir = save_dir+fname+'/'
-            if not os.path.isdir(dist_fir):
-                os.mkdir(dist_fir) 
-            scipy.misc.imsave(dist_fir+fname+".png",img_eq) 
+        img -= np.mean(img,axis=0)
+        X = img.reshape(-1, 3)
+        cov = np.dot(X.T,X) / X.shape[0]
+
+
+        U,S,V = np.linalg.svd(cov)
+
+        Xrot = np.dot(X,U)
+        Xwhite = Xrot/np.sqrt(S+1e-5)
+        Xwhite = Xwhite.reshape((400,400,3))
+        print(Xwhite.shape)
+        #X = img
+        #cov = np.dot(X.T,X)/X.shape[0]
+        #U,S,V = np.linalg.svd(cov)
+        #Xrot = np.dot(X,U)
+        #Xwhite = Xrot/np.sqrt(S+1e-5)
+        #f, axarr = plt.subplots(2,2)
+        #axarr[0,0].imshow(img[:,:,0])
+        #axarr[0,1].imshow(img[:,:,1])
+        #axarr[1,0].imshow(img[:,:,2])
+        #plt.show()
+
+        wavelet = pywt.Wavelet('haar')
+        levels  = int( math.floor( np.log2(img[:,:,0].shape[0]) ) )
+        noiseSigma = 16.0
+        
+        WaveletCoeffs = pywt.wavedec2( img[:,:,0], wavelet, level=levels)
+        threshold = noiseSigma*math.sqrt(2*np.log2(img[:,:,0].size))
+        NewWaveletCoeffs = map (lambda x: pywt.thresholding.soft(x,threshold),
+        WaveletCoeffs)
+        NewImage = pywt.waverec2( NewWaveletCoeffs, wavelet)
+        plt.imshow(NewImage)
+        plt.show()
+        scipy.misc.imsave(save_dir+imageid+".png",img)
 
 
 
