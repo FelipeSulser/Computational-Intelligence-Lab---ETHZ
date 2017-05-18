@@ -46,8 +46,8 @@ TEST_SIZE = 3
 # image size should be an integer multiple of this number!
 #TODO change patch size
 
-CONTEXT_ADDITIVE_FACTOR = 24 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
-IMG_PATCH_SIZE = 16 #should be at least dividor of 608
+CONTEXT_ADDITIVE_FACTOR = 19 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
+IMG_PATCH_SIZE = 12 #should be at least dividor of 608
 CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
 
 if CONTEXT_PATCH == 40:
@@ -91,12 +91,20 @@ def img_crop(im, w, h):
 # the patch itself should be (w+2*context_factor,h+2*context_factor)
 # but the base used for labeling should be (w,h)
 def img_crop_context(im, w, h,context_factor):
+
+    padding_type = 'reflect'
     cf = context_factor
     is_2d = len(im.shape) < 3
     if is_2d:
-        padded_img = numpy.pad(im, cf, 'constant')
+        padded_img = numpy.pad(im, cf, padding_type)
     else:
-        padded_img = numpy.pad(im, ((cf,cf),(cf,cf),(0,0)), 'constant')
+        padded_img = numpy.pad(im, ((cf,cf),(cf,cf),(0,0)), padding_type)
+        title = 'padded_img'
+        plt.title(title)
+        plt.imshow(padded_img)
+        plt.show()
+
+
 
     list_patches = []
     imgheight = padded_img.shape[0]
@@ -110,12 +118,43 @@ def img_crop_context(im, w, h,context_factor):
             
             if is_2d:
                 im_patch = padded_img[i-cf:i+h+cf, j-cf:j+w+cf]
-                if im_patch.shape[0] < 2*cf+h or im_patch.shape[1] < 2*cf+w:
-                    continue
+                if im_patch.shape[0] < 2*cf+h and im_patch.shape[1] == 2*cf+w:
+                     pad_size = 2*cf+h - im_patch.shape[0]
+                     im_patch = numpy.pad(im_patch, ((0,pad_size),(0,0) ), padding_type)
+                elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] == 2*cf+h:
+                    pad_size = 2*cf+w - im_patch.shape[1]
+                    im_patch = numpy.pad(im_patch, ((0,0),(0,pad_size)), padding_type)
+
+                elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] < 2*cf+h:
+                    pad_size0 = 2*cf+h - im_patch.shape[0]
+                    pad_size1 = 2*cf+w - im_patch.shape[1]
+                    im_patch = numpy.pad(im_patch, (( 0,pad_size0),(0,pad_size1)), padding_type)
+
             else:
                 im_patch = padded_img[i-cf:i+h+cf, j-cf:j+w+cf, :]
-                if im_patch.shape[0] < 2*cf+h or im_patch.shape[1] < 2*cf+w:
-                    continue
+                if im_patch.shape[0] < 2*cf+h and im_patch.shape[1] == 2*cf+w:
+                    pad_size = 2*cf+h - im_patch.shape[0]
+                    im_patch = numpy.pad(im_patch, ((0,pad_size),(0,0) ,(0,0)), padding_type)
+                    title = 'i,j = ' + str(i) + ', ' + str(j)
+                    plt.title(title)
+                    plt.imshow(im_patch)
+                    plt.show()
+                elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] == 2*cf+h:
+                    pad_size = 2*cf+w - im_patch.shape[1]
+                    im_patch = numpy.pad(im_patch, ((0,0),(0,pad_size), (0,0)), padding_type)
+                    title = 'i,j = ' + str(i) + ', ' + str(j)
+                    plt.title(title)
+                    plt.imshow(im_patch)
+                    plt.show()
+                elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] < 2*cf+h:
+                    pad_size0 = 2*cf+h - im_patch.shape[0]
+                    pad_size1 = 2*cf+w - im_patch.shape[1]
+                    im_patch = numpy.pad(im_patch, (( 0,pad_size0),(0,pad_size1),(0,0)), padding_type)
+                    title = 'i,j = ' + str(i) + ', ' + str(j)
+                    plt.title(title)
+                    plt.imshow(im_patch)
+                    plt.show()
+
 
             list_patches.append(im_patch)
 

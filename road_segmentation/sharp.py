@@ -24,14 +24,12 @@ import scipy.misc
 from sklearn.decomposition import MiniBatchDictionaryLearning
 from sklearn.feature_extraction.image import extract_patches_2d
 from sklearn.feature_extraction.image import reconstruct_from_patches_2d
-from sklearn.utils.testing import SkipTest
 from sklearn.utils.fixes import sp_version
 from skimage import img_as_float
 from scipy import signal
 from scipy.signal import convolve2d
 from skimage import color, data, restoration
-from skimage.restoration import (denoise_tv_chambolle, denoise_bilateral,
-                                 denoise_wavelet, estimate_sigma)
+from skimage.restoration import denoise_tv_chambolle
 from skimage import data, img_as_float, color
 from skimage.util import random_noise
 
@@ -116,8 +114,8 @@ def binarize(img,block_size,threshold):
 
     numblockheight = int(imgheight/block_size)
 
-    for i in range(0,numblockwidth-1):
-        for j in range(0, numblockheight-1):
+    for i in range(0,numblockwidth):
+        for j in range(0, numblockheight):
             pixel_i = i*block_size
             pixel_j = j*block_size
             avg = np.mean(img[pixel_i:pixel_i+block_size,pixel_j:pixel_j+block_size])
@@ -162,8 +160,8 @@ def img_float_rescale(img):
 
 def main(argv=None):  # pylint: disable=unused-argument
 
-    data_dir = 'predictions_test/result/'
-    out_dir = 'predictions_test/result_smooth_bin/'
+    data_dir = 'predictions_test/result_16_64/'
+    out_dir = 'predictions_test/result_16_64_smooth_bin/'
 
     # Extract it into np arrays.
     
@@ -188,7 +186,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     corner = -1
     edge = -1
     center = 2
-    filter_size = 7
+    filter_size = 17
     filter_mat = np.ones((filter_size,filter_size))
 
     conv_filter1 = tf.constant( filter_mat, tf.float32)
@@ -250,22 +248,22 @@ def main(argv=None):  # pylint: disable=unused-argument
                 res = np.reshape(res, (res.shape[1], res.shape[2]))
                 print('res: ', res.shape)
                 res = img_float_to_uint8(res)
-                print(res)
+                #print(res)
                 res = res/255
                 res_igor = binarize(res, 16, 0.4)
 
-                img_tv = 1-img
-                tv_denoise = denoise_tv_chambolle(img_tv, weight=10)
-                tv_denoise_bw = binarize(tv_denoise,16,0.7)
-                tv_denoise_bw = remove_filtering_neighbors(tv_denoise_bw,7,block_size=16)
+                # img_tv = 1-img
+                # tv_denoise = denoise_tv_chambolle(img_tv, weight=10)
+                # tv_denoise_bw = binarize(tv_denoise,16,0.7)
+                # tv_denoise_bw = remove_filtering_neighbors(tv_denoise_bw,7,block_size=16)
 
-                tv_denoise_bw = 1-tv_denoise_bw
-                f, axarr = plt.subplots(2,2)
-                axarr[0,0].imshow(img)
-                axarr[0,1].imshow(tv_denoise_bw)
-                axarr[1,0].imshow(res_igor)
+                # tv_denoise_bw = 1-tv_denoise_bw
+                # f, axarr = plt.subplots(2,2)
+                # axarr[0,0].imshow(img)
+                # axarr[0,1].imshow(tv_denoise_bw)
+                # axarr[1,0].imshow(res_igor)
                 
-                plt.show()
+                # plt.show()
 
                 im_save(out_dir+ff, res_igor)
                 print('File %s saved!' %(out_dir+ff))
