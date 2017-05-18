@@ -109,6 +109,8 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
 
 
     return img
+
+    
 save_dir = "/Users/felipesulser/Dropbox/ETH/CIL/TensorFlow/predictions_test/denoised/"
 if not os.path.isdir(save_dir):
     os.mkdir(save_dir) 

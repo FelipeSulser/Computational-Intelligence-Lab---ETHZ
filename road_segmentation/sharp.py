@@ -14,23 +14,17 @@ import numpy as np
 import tensorflow as tf
 
 
-from time import time
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
-import numpy as np
+
 import scipy as sp
-import os
+
 import scipy.misc
-from sklearn.decomposition import MiniBatchDictionaryLearning
-from sklearn.feature_extraction.image import extract_patches_2d
-from sklearn.feature_extraction.image import reconstruct_from_patches_2d
-from sklearn.utils.fixes import sp_version
-from skimage import img_as_float
+
 from scipy import signal
 from scipy.signal import convolve2d
-from skimage import color, data, restoration
 from skimage.restoration import denoise_tv_chambolle
-from skimage import data, img_as_float, color
+from skimage import data, img_as_float, color, restoration
 from skimage.util import random_noise
 
 NUM_CHANNELS = 3
