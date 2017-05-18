@@ -2,7 +2,6 @@
 Baseline for CIL project on road segmentation.
 This simple baseline consits of a CNN with two convolutional+pooling layers with a soft-max loss
 """
-
 import gc
 import gzip
 import os
@@ -27,8 +26,8 @@ SEED = 66478  # Set to None for random seed.
 #TODO change batch size
 BATCH_SIZE = 32 # 64
 #TODO change epoch number
-NUM_EPOCHS = 8
-RESTORE_MODEL = True # If True, restore existing model instead of training a new one
+NUM_EPOCHS = 9
+RESTORE_MODEL = False # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
@@ -38,6 +37,7 @@ TRAINING_SIZE = 10
 
 TEST_START_ID = 48
 TEST_SIZE = 3
+
 
 
 
@@ -103,8 +103,11 @@ def img_crop_context(im, w, h,context_factor):
     imgwidth = padded_img.shape[1]
     
     #print('padded_img: ', padded_img.shape)
+
     for i in range(cf,imgheight-cf,h):
         for j in range(cf,imgwidth-cf,w):
+            im_patch = numpy.zeros(1)
+            
             if is_2d:
                 im_patch = padded_img[i-cf:i+h+cf, j-cf:j+w+cf]
                 if im_patch.shape[0] < 2*cf+h or im_patch.shape[1] < 2*cf+w:
@@ -119,7 +122,7 @@ def img_crop_context(im, w, h,context_factor):
     return list_patches
 
 # OLD VERSION!!! use img_crop_context() instead
-def _img_crop_context(im, w, h,context_factor):
+def _img_crop_context_depr(im, w, h,context_factor):
 
     list_patches = []
     imgwidth = im.shape[0]
@@ -274,6 +277,7 @@ def label_to_img(imgwidth, imgheight, w, h, labels):
             #     l = 0
             l = labels[idx][0]
             array_labels[j:j+w, i:i+h] = l
+
             idx = idx + 1
     return array_labels
 
@@ -327,6 +331,13 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     train_data = extract_data(train_data_filename, TRAINING_SIZE, STARTING_ID, CONTEXT_ADDITIVE_FACTOR)
     train_labels = extract_labels(train_labels_filename, TRAINING_SIZE, STARTING_ID, CONTEXT_ADDITIVE_FACTOR)
+
+    print(type(train_data))
+    print(train_data.shape)
+    print(train_data)
+    print(type(train_labels))
+    print(train_labels.shape)
+    print(train_labels)
     print("Train data shape: ", train_data.shape)
     print("Train labels shape: ", train_labels.shape)
     
@@ -370,7 +381,7 @@ def main(argv=None):  # pylint: disable=unused-argument
                                        shape=(BATCH_SIZE, NUM_LABELS))
 
 
-    #train_all_data_node = tf.constant(train_data)
+    train_all_data_node = tf.constant(train_data)
 
     # The variables below hold all the trainable weights. They are passed an
     # initial value which will be assigned when when we call:
@@ -442,11 +453,9 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Get prediction for given input image 
     def get_prediction(img):
-        print('get_prediction(): ')
-        print(' img.shape: ', img.shape)
-        data = numpy.asarray(img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR))
-        #print(data)
-        #data2 = numpy.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE))
+        cropped = img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR)
+        data = numpy.asarray(cropped)
+
         data_node = tf.constant(data)
         output = tf.nn.softmax(model(data_node))
         output_prediction = s.run(output)
