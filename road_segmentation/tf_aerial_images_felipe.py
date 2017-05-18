@@ -33,10 +33,10 @@ DOWNSCALE = 1
 
 MODE = 'train' # 'train' or 'predict'
 STARTING_ID = 1 # 21, 41...
-TRAINING_SIZE = 10
+TRAINING_SIZE = 100 
 
-TEST_START_ID = 48
-TEST_SIZE = 3
+TEST_START_ID = 1
+TEST_SIZE = 50
 
 
 
@@ -50,15 +50,6 @@ CONTEXT_ADDITIVE_FACTOR = 19 #patch context increased by 2x2, so a 8x8 patch bec
 IMG_PATCH_SIZE = 12 #should be at least dividor of 608
 CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
 
-if CONTEXT_PATCH == 40:
-    FC1_WIDTH = 576
-elif CONTEXT_PATCH == 64:
-    FC1_WIDTH = 1024
-elif CONTEXT_PATCH == 32:
-    FC1_WIDTH = 512
-else:
-    FC1_WIDTH = -42 # TODO 
-    print('Please set FC1_WIDTH!!')
 
 
 NUMFILES = 0
@@ -99,10 +90,6 @@ def img_crop_context(im, w, h,context_factor):
         padded_img = numpy.pad(im, cf, padding_type)
     else:
         padded_img = numpy.pad(im, ((cf,cf),(cf,cf),(0,0)), padding_type)
-        title = 'padded_img'
-        plt.title(title)
-        plt.imshow(padded_img)
-        plt.show()
 
 
 
@@ -119,8 +106,8 @@ def img_crop_context(im, w, h,context_factor):
             if is_2d:
                 im_patch = padded_img[i-cf:i+h+cf, j-cf:j+w+cf]
                 if im_patch.shape[0] < 2*cf+h and im_patch.shape[1] == 2*cf+w:
-                     pad_size = 2*cf+h - im_patch.shape[0]
-                     im_patch = numpy.pad(im_patch, ((0,pad_size),(0,0) ), padding_type)
+                    pad_size = 2*cf+h - im_patch.shape[0]
+                    im_patch = numpy.pad(im_patch, ((0,pad_size),(0,0) ), padding_type)
                 elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] == 2*cf+h:
                     pad_size = 2*cf+w - im_patch.shape[1]
                     im_patch = numpy.pad(im_patch, ((0,0),(0,pad_size)), padding_type)
@@ -135,25 +122,13 @@ def img_crop_context(im, w, h,context_factor):
                 if im_patch.shape[0] < 2*cf+h and im_patch.shape[1] == 2*cf+w:
                     pad_size = 2*cf+h - im_patch.shape[0]
                     im_patch = numpy.pad(im_patch, ((0,pad_size),(0,0) ,(0,0)), padding_type)
-                    title = 'i,j = ' + str(i) + ', ' + str(j)
-                    plt.title(title)
-                    plt.imshow(im_patch)
-                    plt.show()
                 elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] == 2*cf+h:
                     pad_size = 2*cf+w - im_patch.shape[1]
                     im_patch = numpy.pad(im_patch, ((0,0),(0,pad_size), (0,0)), padding_type)
-                    title = 'i,j = ' + str(i) + ', ' + str(j)
-                    plt.title(title)
-                    plt.imshow(im_patch)
-                    plt.show()
                 elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] < 2*cf+h:
                     pad_size0 = 2*cf+h - im_patch.shape[0]
                     pad_size1 = 2*cf+w - im_patch.shape[1]
                     im_patch = numpy.pad(im_patch, (( 0,pad_size0),(0,pad_size1),(0,0)), padding_type)
-                    title = 'i,j = ' + str(i) + ', ' + str(j)
-                    plt.title(title)
-                    plt.imshow(im_patch)
-                    plt.show()
 
 
             list_patches.append(im_patch)
@@ -453,7 +428,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     fc1_weights = tf.Variable(  # fully connected, depth 512.
         #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
-        tf.truncated_normal([FC1_WIDTH, 64],
+        tf.truncated_normal([1024, 64],
                             stddev=0.1,
                             seed=SEED), name='fc1_weights')
     fc1_biases = tf.Variable(tf.constant(0.1, shape=[64]), name='fc1_biases')
