@@ -34,7 +34,10 @@ DOWNSCALE = 1
 
 MODE = 'train' # 'train' or 'predict'
 STARTING_ID = 1 # 21, 41...
-TRAINING_SIZE = 50
+TRAINING_SIZE = 10
+
+TEST_START_ID = 48
+TEST_SIZE = 3
 
 
 
@@ -43,11 +46,19 @@ TRAINING_SIZE = 50
 # image size should be an integer multiple of this number!
 #TODO change patch size
 
-CONTEXT_ADDITIVE_FACTOR = 15 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
-IMG_PATCH_SIZE = 10 #8x8
+CONTEXT_ADDITIVE_FACTOR = 24 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
+IMG_PATCH_SIZE = 16 #should be at least dividor of 608
 CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
 
-POOL_DIM_RED = 2     # defines by what factor pooling reduces the dimensions
+if CONTEXT_PATCH == 40:
+    FC1_WIDTH = 576
+elif CONTEXT_PATCH == 64:
+    FC1_WIDTH = 1024
+elif CONTEXT_PATCH == 32:
+    FC1_WIDTH = 512
+else:
+    FC1_WIDTH = -42 # TODO 
+    print('Please set FC1_WIDTH!!')
 
 
 NUMFILES = 0
@@ -88,18 +99,20 @@ def img_crop_context(im, w, h,context_factor):
         padded_img = numpy.pad(im, ((cf,cf),(cf,cf),(0,0)), 'constant')
 
     list_patches = []
-    imgwidth = padded_img.shape[0]
-    imgheight = padded_img.shape[1]
+    imgheight = padded_img.shape[0]
+    imgwidth = padded_img.shape[1]
+    
     #print('padded_img: ', padded_img.shape)
     for i in range(cf,imgheight-cf,h):
         for j in range(cf,imgwidth-cf,w):
             if is_2d:
-                im_patch = padded_img[j-cf:j+w+cf, i-cf:i+h+cf]
+                im_patch = padded_img[i-cf:i+h+cf, j-cf:j+w+cf]
+                if im_patch.shape[0] < 2*cf+h or im_patch.shape[1] < 2*cf+w:
+                    continue
             else:
-                im_patch = padded_img[j-cf:j+w+cf, i-cf:i+h+cf, :]
-            #if im_patch.shape[0] != CONTEXT_PATCH or im_patch.shape[1] != CONTEXT_PATCH:
-            #    print('i,j: ', i,j)
-            #    print(im_patch.shape)
+                im_patch = padded_img[i-cf:i+h+cf, j-cf:j+w+cf, :]
+                if im_patch.shape[0] < 2*cf+h or im_patch.shape[1] < 2*cf+w:
+                    continue
 
             list_patches.append(im_patch)
 
@@ -255,10 +268,11 @@ def label_to_img(imgwidth, imgheight, w, h, labels):
     idx = 0
     for i in range(0,imgheight,h):
         for j in range(0,imgwidth,w):
-            if labels[idx][0] > 0.5:
-                l = 1
-            else:
-                l = 0
+            # if labels[idx][0] > 0.5:
+            #     l = 1
+            # else:
+            #     l = 0
+            l = labels[idx][0]
             array_labels[j:j+w, i:i+h] = l
             idx = idx + 1
     return array_labels
@@ -389,7 +403,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     fc1_weights = tf.Variable(  # fully connected, depth 512.
         #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
-        tf.truncated_normal([576, 64],
+        tf.truncated_normal([FC1_WIDTH, 64],
                             stddev=0.1,
                             seed=SEED), name='fc1_weights')
     fc1_biases = tf.Variable(tf.constant(0.1, shape=[64]), name='fc1_biases')
@@ -428,7 +442,8 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Get prediction for given input image 
     def get_prediction(img):
-       
+        print('get_prediction(): ')
+        print(' img.shape: ', img.shape)
         data = numpy.asarray(img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR))
         #print(data)
         #data2 = numpy.asarray(img_crop(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE))
@@ -692,7 +707,7 @@ def main(argv=None):  # pylint: disable=unused-argument
                 os.mkdir(real_prediction)
             if not os.path.isdir(real_prediction+"result/"):
                 os.mkdir(real_prediction+"result/")
-            for i in range(1,NUMFILES+1):
+            for i in range(TEST_START_ID, TEST_START_ID+TEST_SIZE):
                 print("Prediction for img: "+str(i))
 
                 # read image
