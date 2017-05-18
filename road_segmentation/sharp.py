@@ -3,6 +3,7 @@ import os
 import sys
 import urllib
 import matplotlib.image as mpimg
+from scipy.misc import imsave as  im_save
 from PIL import Image
 
 import code
@@ -14,6 +15,32 @@ import tensorflow as tf
 
 NUM_CHANNELS = 3
 PIXEL_DEPTH = 255
+
+
+def rgb2gray(rgb):
+    return np.dot(rgb[...,:3], [0.299, 0.587, 0.114])
+
+def binarize(img,block_size,threshold):
+    
+    imgwidth = img.shape[0]
+    imgheight = img.shape[1]
+    
+    numblockwidth = int(imgwidth/block_size)
+
+    numblockheight = int(imgheight/block_size)
+
+    for i in range(0,numblockwidth-1):
+        for j in range(0, numblockheight-1):
+            pixel_i = i*block_size
+            pixel_j = j*block_size
+            avg = np.mean(img[pixel_i:pixel_i+block_size,pixel_j:pixel_j+block_size])
+            if(avg > threshold):
+                img[pixel_i:pixel_i+block_size,pixel_j:pixel_j+block_size] = 1
+            else:
+                img[pixel_i:pixel_i+block_size,pixel_j:pixel_j+block_size] = 0
+
+    return img
+
 
 def extract_data(directory, filenames):
     """Extract the images into a 4D tensor [image index, y, x, channels].
@@ -49,7 +76,7 @@ def img_float_rescale(img):
 def main(argv=None):  # pylint: disable=unused-argument
 
     data_dir = 'predictions_test/result/'
-    out_dir = 'predictions_test/result_smooth/'
+    out_dir = 'predictions_test/result_smooth_bin/'
 
     # Extract it into np arrays.
     
@@ -67,7 +94,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     # the {feed_dict} argument to the Run() call below.
     train_data_node = tf.placeholder(
         tf.float32,
-        shape=(3, IMG_SIZE, IMG_SIZE, 1))
+        shape=(1, IMG_SIZE, IMG_SIZE, 1))
 
     # Here define the constant Convolution filter
     # it must have shape (x, x, NUM_CHANNELS, 1)
@@ -122,27 +149,24 @@ def main(argv=None):  # pylint: disable=unused-argument
             if os.path.isfile(full_path):
                 print ('Loading ' + full_path)
                 img = mpimg.imread(full_path)
+                img = rgb2gray(img)
                 print('img: ',img.shape)
-                data_node_r = np.reshape(img[:,:,0], (1,IMG_SIZE,IMG_SIZE,1))
-                data_node_g = np.reshape(img[:,:,1], (1,IMG_SIZE,IMG_SIZE,1))
-                data_node_b = np.reshape(img[:,:,2], (1,IMG_SIZE,IMG_SIZE,1))
-                data_node = np.concatenate((data_node_r,data_node_g,data_node_b), 0)
+                data_node = np.reshape(img[:,:], (1,IMG_SIZE,IMG_SIZE,1))
                 #print('data_node: ', data_node.shape)
 
 
                 feed_dict = {train_data_node: data_node}
                 res = s.run(model(train_data_node), feed_dict=feed_dict)
                 res = np.asarray(res)
-                #print(res.shape)
-                res_r = res[0,:,:,:]
-                res_g = res[1,:,:,:]
-                res_b = res[2,:,:,:]
-                res2 = np.concatenate((res_r,res_g,res_b), axis=2)
-                #print(res2.shape)
-                res2 = img_float_to_uint8(res2)
+
+                res = np.reshape(res, (res.shape[1], res.shape[2]))
+                print('res: ', res.shape)
+                res = img_float_to_uint8(res)
+
+                res = binarize(res, 16, 0.4*255)
 
 
-                Image.fromarray(res2).convert('RGB').save(out_dir+ff)
+                im_save(out_dir+ff, res)
                 print('File %s saved!' %(out_dir+ff))
 
             else:
