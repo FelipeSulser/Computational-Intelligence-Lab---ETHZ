@@ -46,8 +46,7 @@ for i in range(1, 201):
 
         Xrot = np.dot(X,U)
         Xwhite = Xrot/np.sqrt(S+1e-5)
-        Xwhite = Xwhite.reshape((400,400,3))
-        print(Xwhite.shape)
+        Xwhite = Xwhite.reshape((img.shape[0],img.shape[1],3))
         #X = img
         #cov = np.dot(X.T,X)/X.shape[0]
         #U,S,V = np.linalg.svd(cov)
@@ -59,18 +58,18 @@ for i in range(1, 201):
         #axarr[1,0].imshow(img[:,:,2])
         #plt.show()
 
-        wavelet = pywt.Wavelet('haar')
-        levels  = int( math.floor( np.log2(img[:,:,0].shape[0]) ) )
-        noiseSigma = 16.0
-        
-        WaveletCoeffs = pywt.wavedec2( img[:,:,0], wavelet, level=levels)
-        threshold = noiseSigma*math.sqrt(2*np.log2(img[:,:,0].size))
-        NewWaveletCoeffs = map (lambda x: pywt.thresholding.soft(x,threshold),
-        WaveletCoeffs)
-        NewImage = pywt.waverec2( NewWaveletCoeffs, wavelet)
-        plt.imshow(NewImage)
-        plt.show()
-        scipy.misc.imsave(save_dir+imageid+".png",img)
+        # wavelet = pywt.Wavelet('haar')
+        # levels  = int( math.floor( np.log2(img[:,:,0].shape[0]) ) )
+        # noiseSigma = 16.0
+
+        # WaveletCoeffs = pywt.wavedec2( img[:,:,0], wavelet, level=levels)
+        # threshold = noiseSigma*math.sqrt(2*np.log2(img[:,:,0].size))
+        # NewWaveletCoeffs = map (lambda x: pywt.thresholding.soft(x,threshold),
+        # WaveletCoeffs)
+        # NewImage = pywt.waverec2( NewWaveletCoeffs, wavelet)
+        # plt.imshow(NewImage)
+        # plt.show()
+        scipy.misc.imsave(save_dir+imageid+".png",Xwhite)
 
 
 
