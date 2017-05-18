@@ -33,9 +33,9 @@ DOWNSCALE = 1
 
 MODE = 'train' # 'train' or 'predict'
 STARTING_ID = 1 # 21, 41...
-TRAINING_SIZE = 10
+TRAINING_SIZE = 20
 
-TEST_START_ID = 48
+TEST_START_ID = 1
 TEST_SIZE = 3
 
 
@@ -56,8 +56,10 @@ elif CONTEXT_PATCH == 64:
     FC1_WIDTH = 1024
 elif CONTEXT_PATCH == 32:
     FC1_WIDTH = 512
+elif CONTEXT_PATCH == 50:
+    FC1_WIDTH = 1024    
 else:
-    FC1_WIDTH = -42 # TODO 
+    FC1_WIDTH = 42 # TODO 
     print('Please set FC1_WIDTH!!')
 
 
@@ -99,10 +101,10 @@ def img_crop_context(im, w, h,context_factor):
         padded_img = numpy.pad(im, cf, padding_type)
     else:
         padded_img = numpy.pad(im, ((cf,cf),(cf,cf),(0,0)), padding_type)
-        title = 'padded_img'
-        plt.title(title)
-        plt.imshow(padded_img)
-        plt.show()
+        # title = 'padded_img'
+        # plt.title(title)
+        # plt.imshow(padded_img)
+        # plt.show()
 
 
 
@@ -119,8 +121,8 @@ def img_crop_context(im, w, h,context_factor):
             if is_2d:
                 im_patch = padded_img[i-cf:i+h+cf, j-cf:j+w+cf]
                 if im_patch.shape[0] < 2*cf+h and im_patch.shape[1] == 2*cf+w:
-                     pad_size = 2*cf+h - im_patch.shape[0]
-                     im_patch = numpy.pad(im_patch, ((0,pad_size),(0,0) ), padding_type)
+                    pad_size = 2*cf+h - im_patch.shape[0]
+                    im_patch = numpy.pad(im_patch, ((0,pad_size),(0,0) ), padding_type)
                 elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] == 2*cf+h:
                     pad_size = 2*cf+w - im_patch.shape[1]
                     im_patch = numpy.pad(im_patch, ((0,0),(0,pad_size)), padding_type)
@@ -135,25 +137,25 @@ def img_crop_context(im, w, h,context_factor):
                 if im_patch.shape[0] < 2*cf+h and im_patch.shape[1] == 2*cf+w:
                     pad_size = 2*cf+h - im_patch.shape[0]
                     im_patch = numpy.pad(im_patch, ((0,pad_size),(0,0) ,(0,0)), padding_type)
-                    title = 'i,j = ' + str(i) + ', ' + str(j)
-                    plt.title(title)
-                    plt.imshow(im_patch)
-                    plt.show()
+                    # title = 'i,j = ' + str(i) + ', ' + str(j)
+                    # plt.title(title)
+                    # plt.imshow(im_patch)
+                    # plt.show()
                 elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] == 2*cf+h:
                     pad_size = 2*cf+w - im_patch.shape[1]
                     im_patch = numpy.pad(im_patch, ((0,0),(0,pad_size), (0,0)), padding_type)
-                    title = 'i,j = ' + str(i) + ', ' + str(j)
-                    plt.title(title)
-                    plt.imshow(im_patch)
-                    plt.show()
+                    # title = 'i,j = ' + str(i) + ', ' + str(j)
+                    # plt.title(title)
+                    # plt.imshow(im_patch)
+                    # plt.show()
                 elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] < 2*cf+h:
                     pad_size0 = 2*cf+h - im_patch.shape[0]
                     pad_size1 = 2*cf+w - im_patch.shape[1]
                     im_patch = numpy.pad(im_patch, (( 0,pad_size0),(0,pad_size1),(0,0)), padding_type)
-                    title = 'i,j = ' + str(i) + ', ' + str(j)
-                    plt.title(title)
-                    plt.imshow(im_patch)
-                    plt.show()
+                    # title = 'i,j = ' + str(i) + ', ' + str(j)
+                    # plt.title(title)
+                    # plt.imshow(im_patch)
+                    # plt.show()
 
 
             list_patches.append(im_patch)
@@ -161,54 +163,53 @@ def img_crop_context(im, w, h,context_factor):
     return list_patches
 
 # OLD VERSION!!! use img_crop_context() instead
-def _img_crop_context_depr(im, w, h,context_factor):
-
-    list_patches = []
-    imgwidth = im.shape[0]
-    imgheight = im.shape[1]
-    is_2d = len(im.shape) < 3
-    for i in range(0,imgheight,h):
-        for j in range(0,imgwidth,w):
-            if is_2d:
-                #im_patch = im[j:j+w, i:i+h]
-                im_patch = numpy.zeros((w+2*context_factor,h+2*context_factor))
-                iterx = 0
-                itery = 0
-                for x in range(j - context_factor,j+w+context_factor):
-                    itery = 0
-                    for y in range(i - context_factor,i+h+context_factor):
-                        if x >= 0 and y >= 0 and x < imgwidth and y < imgheight:
-                            im_patch[iterx,itery] = im[x,y]
+# def _img_crop_context_depr(im, w, h,context_factor):
+#     list_patches = []
+#     imgwidth = im.shape[0]
+#     imgheight = im.shape[1]
+#     is_2d = len(im.shape) < 3
+#     for i in range(0,imgheight,h):
+#         for j in range(0,imgwidth,w):
+#             if is_2d:
+#                 #im_patch = im[j:j+w, i:i+h]
+#                 im_patch = numpy.zeros((w+2*context_factor,h+2*context_factor))
+#                 iterx = 0
+#                 itery = 0
+#                 for x in range(j - context_factor,j+w+context_factor):
+#                     itery = 0
+#                     for y in range(i - context_factor,i+h+context_factor):
+#                         if x >= 0 and y >= 0 and x < imgwidth and y < imgheight:
+#                             im_patch[iterx,itery] = im[x,y]
                         
-                        itery = itery + 1
-                    iterx = iterx + 1
-                #print("INDEX: ["+str(j-context_factor)+":"+str(j+w+context_factor)+", "+str(i-context_factor)+":"+str(i+h+context_factor)+"]")
-                #im_patch = im[(j-context_factor):(j+w+context_factor), (i-context_factor):(i+h+context_factor)]
-            else:
-                #im_patch = im[j:j+w, i:i+h, :]
-                #print("INDEX: ["+str(j-context_factor)+":"+str(j+w+context_factor)+", "+str(i-context_factor)+":"+str(i+h+context_factor)+"]")
-                #im_patch = im[(j-context_factor):(j+w+context_factor), (i-context_factor):(i+h+context_factor),:]
-                im_patch = numpy.zeros((w+2*context_factor,h+2*context_factor,3))
-                #print(im_patch.shape)
-                iterx = 0
-                itery = 0
-                for x in range(j - context_factor,j+w+context_factor):
-                    itery = 0
-                    for y in range(i - context_factor,i+h+context_factor):
-                        #print(str(x) + " "+str(y)+" and "+str(iterx)+" " + str(itery))
-                        if x >= 0 and y >= 0 and x < imgwidth and y < imgheight:
-                            im_patch[iterx,itery,:] = im[x,y,:]
+#                         itery = itery + 1
+#                     iterx = iterx + 1
+#                 #print("INDEX: ["+str(j-context_factor)+":"+str(j+w+context_factor)+", "+str(i-context_factor)+":"+str(i+h+context_factor)+"]")
+#                 #im_patch = im[(j-context_factor):(j+w+context_factor), (i-context_factor):(i+h+context_factor)]
+#             else:
+#                 #im_patch = im[j:j+w, i:i+h, :]
+#                 #print("INDEX: ["+str(j-context_factor)+":"+str(j+w+context_factor)+", "+str(i-context_factor)+":"+str(i+h+context_factor)+"]")
+#                 #im_patch = im[(j-context_factor):(j+w+context_factor), (i-context_factor):(i+h+context_factor),:]
+#                 im_patch = numpy.zeros((w+2*context_factor,h+2*context_factor,3))
+#                 #print(im_patch.shape)
+#                 iterx = 0
+#                 itery = 0
+#                 for x in range(j - context_factor,j+w+context_factor):
+#                     itery = 0
+#                     for y in range(i - context_factor,i+h+context_factor):
+#                         #print(str(x) + " "+str(y)+" and "+str(iterx)+" " + str(itery))
+#                         if x >= 0 and y >= 0 and x < imgwidth and y < imgheight:
+#                             im_patch[iterx,itery,:] = im[x,y,:]
                         
-                        itery = itery + 1
-                    iterx = iterx + 1
-                # img_data = Image.fromarray(numpy.uint8(im_patch*255))
-                # plt.imshow(img_data)
-                # plt.show()
-            #print(im_patch)
-            list_patches.append(im_patch)
-    #print(list_patches[250][:,:,0])
-    print('list_patches[0].shape: ', list_patches[0].shape)
-    return list_patches
+#                         itery = itery + 1
+#                     iterx = iterx + 1
+#                 # img_data = Image.fromarray(numpy.uint8(im_patch*255))
+#                 # plt.imshow(img_data)
+#                 # plt.show()
+#             #print(im_patch)
+#             list_patches.append(im_patch)
+#     #print(list_patches[250][:,:,0])
+#     print('list_patches[0].shape: ', list_patches[0].shape)
+#     return list_patches
 
 def extract_data(filename, num_images, starting_id, context_factor):
     """Extract the images into a 4D tensor [image index, y, x, channels].
@@ -425,44 +426,80 @@ def main(argv=None):  # pylint: disable=unused-argument
     # The variables below hold all the trainable weights. They are passed an
     # initial value which will be assigned when when we call:
     # {tf.initialize_all_variables().run()}
-    conv1_weights = tf.Variable(
-        tf.truncated_normal([5, 5, NUM_CHANNELS, 16],  # 5x5 filter, depth 32.
-                            stddev=0.1,
-                            seed=SEED), name='conv1_weights')
-    conv1_biases = tf.Variable(tf.zeros([16]), name='conv1_biases')
+    init_type = 'xavier'
+    if init_type=='normal':
+        conv1_weights = tf.Variable(
+            tf.truncated_normal([5, 5, NUM_CHANNELS, 16],  # 5x5 filter, depth 32.
+                                stddev=0.1,
+                                seed=SEED), name='conv1_weights')
+        conv1_biases = tf.Variable(tf.zeros([16]), name='conv1_biases')
 
-    conv2_weights = tf.Variable(
-        tf.truncated_normal([3, 3, 16, 32],
-                            stddev=0.1,
-                            seed=SEED), name='conv2_weights')
-    conv2_biases = tf.Variable(tf.zeros([32]), name='conv2_biases')
+        conv2_weights = tf.Variable(
+            tf.truncated_normal([3, 3, 16, 32],
+                                stddev=0.1,
+                                seed=SEED), name='conv2_weights')
+        conv2_biases = tf.Variable(tf.zeros([32]), name='conv2_biases')
 
-    conv3_weights = tf.Variable(
-        tf.truncated_normal([3, 3, 32, 32],
-                            stddev=0.1,
-                            seed=SEED), name='conv3_weights')
-    conv3_biases = tf.Variable(tf.constant(0.1, shape=[32]), name='conv3_biases')
+        conv3_weights = tf.Variable(
+            tf.truncated_normal([3, 3, 32, 32],
+                                stddev=0.1,
+                                seed=SEED), name='conv3_weights')
+        conv3_biases = tf.Variable(tf.constant(0.1, shape=[32]), name='conv3_biases')
 
-    conv4_weights = tf.Variable(
-        tf.truncated_normal([3,3,32,64],
-                            stddev=0.1,
-                            seed=SEED), name='conv4_weights')
-    conv4_biases = tf.Variable(tf.constant(0.1,shape=[64]), name='conv4_biases')
-   
+        conv4_weights = tf.Variable(
+            tf.truncated_normal([3,3,32,64],
+                                stddev=0.1,
+                                seed=SEED), name='conv4_weights')
+        conv4_biases = tf.Variable(tf.constant(0.1,shape=[64]), name='conv4_biases')
+       
 
 
-    fc1_weights = tf.Variable(  # fully connected, depth 512.
-        #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
-        tf.truncated_normal([FC1_WIDTH, 64],
-                            stddev=0.1,
-                            seed=SEED), name='fc1_weights')
-    fc1_biases = tf.Variable(tf.constant(0.1, shape=[64]), name='fc1_biases')
+        fc1_weights = tf.Variable(  # fully connected, depth 512.
+            #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
+            tf.truncated_normal([FC1_WIDTH, 64],
+                                stddev=0.1,
+                                seed=SEED), name='fc1_weights')
+        fc1_biases = tf.Variable(tf.constant(0.1, shape=[64]), name='fc1_biases')
 
-    fc2_weights = tf.Variable(  # fully connected, depth 64.
-        tf.truncated_normal([64, NUM_LABELS],
-                            stddev=0.1,
-                            seed=SEED), name='fc2_weights')
-    fc2_biases  = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]), name='fc2_biases')
+        fc2_weights = tf.Variable(  # fully connected, depth 64.
+            tf.truncated_normal([64, NUM_LABELS],
+                                stddev=0.1,
+                                seed=SEED), name='fc2_weights')
+        fc2_biases  = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]), name='fc2_biases')
+
+
+
+    elif init_type == 'xavier':
+        conv1_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
+        conv1_weights = tf.Variable( conv1_weights_init(shape=[5, 5, NUM_CHANNELS, 16]), name='conv1_weights')
+        conv1_biases = tf.Variable(tf.constant(0.01, shape=[16]), name='conv1_biases')
+
+        conv2_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
+        conv2_weights = tf.Variable( conv2_weights_init(shape=[3, 3, 16, 32]), name='conv2_weights')
+        conv2_biases = tf.Variable(tf.constant(0.01, shape=[32]), name='conv2_biases')
+
+        conv3_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
+        conv3_weights = tf.Variable( conv3_weights_init(shape=[3, 3, 32, 32]), name='conv3_weights')
+        conv3_biases = tf.Variable(tf.constant(0.1, shape=[32]), name='conv3_biases')
+
+        conv4_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
+        conv4_weights = tf.Variable( conv4_weights_init(shape=[3,3,32,64]), name='conv4_weights')
+        conv4_biases = tf.Variable(tf.constant(0.1,shape=[64]), name='conv4_biases')
+
+
+        fc1_weights_init = tf.contrib.layers.xavier_initializer()
+        fc1_weights = tf.Variable(  fc1_weights_init(shape=[FC1_WIDTH, 64]), name='fc1_weights')
+        fc1_biases = tf.Variable(tf.constant(0.1, shape=[64]), name='fc1_biases')
+
+        fc2_weights_init = tf.contrib.layers.xavier_initializer()
+        fc2_weights = tf.Variable( fc2_weights_init(shape=[64, NUM_LABELS]), name='fc2_weights')
+        fc2_biases  = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]), name='fc2_biases')
+    else:
+        print('You have to specify some init_type')
+       
+
+
+        
 
 
 
@@ -643,8 +680,8 @@ def main(argv=None):  # pylint: disable=unused-argument
         #hidden2 = tf.nn.relu(tf.matmul(hidden1,fc2_weights) + fc2_biases)
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.
-        #if train:
-        #    hidden = tf.nn.dropout(hidden1, 0.5, seed=SEED)
+        if train:
+            hidden = tf.nn.dropout(hidden1, 0.9, seed=SEED)
 
         out = tf.matmul(hidden1, fc2_weights) + fc2_biases
         #out = tf.layers.dense(inputs = hidden1, units=2)
@@ -670,7 +707,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         return out
 
     # Training computation: logits + cross-entropy loss.
-    logits = model(train_data_node, True) # BATCH_SIZE*NUM_LABELS
+    logits = model(train_data_node, MODE=='train') # BATCH_SIZE*NUM_LABELS
     # print 'logits = ' + str(logits.get_shape()) + ' train_labels_node = ' + str(train_labels_node.get_shape())
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
         logits=logits, labels=train_labels_node))
