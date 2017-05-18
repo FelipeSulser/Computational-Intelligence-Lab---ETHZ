@@ -13,9 +13,96 @@ import tensorflow.python.platform
 import numpy as np
 import tensorflow as tf
 
+
+from time import time
+import matplotlib.image as mpimg
+import matplotlib.pyplot as plt
+import numpy as np
+import scipy as sp
+import os
+import scipy.misc
+from sklearn.decomposition import MiniBatchDictionaryLearning
+from sklearn.feature_extraction.image import extract_patches_2d
+from sklearn.feature_extraction.image import reconstruct_from_patches_2d
+from sklearn.utils.testing import SkipTest
+from sklearn.utils.fixes import sp_version
+from skimage import img_as_float
+from scipy import signal
+from scipy.signal import convolve2d
+from skimage import color, data, restoration
+from skimage.restoration import (denoise_tv_chambolle, denoise_bilateral,
+                                 denoise_wavelet, estimate_sigma)
+from skimage import data, img_as_float, color
+from skimage.util import random_noise
+
 NUM_CHANNELS = 3
 PIXEL_DEPTH = 255
 
+NEIGHBOOR_TO_CONSIDER = 8
+BALCK_TH = int(0.75 * NEIGHBOOR_TO_CONSIDER)
+WHITE_TH = int(0.25 * NEIGHBOOR_TO_CONSIDER)
+
+def remove_filtering_neighbors(img,black_threshold, block_size = 16):
+    #img is b&w array with 0 or 1
+    imgwidth = img.shape[0]
+    imgheight = img.shape[1]
+    
+    numblockwidth = int(imgwidth/block_size)
+
+    numblockheight = int(imgheight/block_size)
+
+    for i in range(0,numblockwidth-1):
+        for j in range(0, numblockheight-1):
+            pixel_i = i*block_size
+            pixel_j = j*block_size
+
+            if img[pixel_i,pixel_j] == 0: #if patch is black
+                #if not surrounded by 3 cut it
+                neighbors = np.zeros(8)
+
+                #black is 0
+
+                neighbors[0] = img[pixel_i-block_size,pixel_j]
+                neighbors[1] = img[pixel_i+block_size,pixel_j]
+                neighbors[2] = img[pixel_i,pixel_j-block_size]
+                neighbors[3] = img[pixel_i,pixel_j+block_size]
+                neighbors[4] = img[pixel_i-block_size,pixel_j-block_size]
+                neighbors[5] = img[pixel_i-block_size,pixel_j+block_size]
+                neighbors[6] = img[pixel_i+block_size,pixel_j-block_size]
+                neighbors[7] = img[pixel_i+block_size,pixel_j+block_size]
+
+                sum_val = np.sum(neighbors)
+                if(sum_val > black_threshold):
+                    #repaint block
+                    for xx in range(0,block_size):
+                        for yy in range(0,block_size):
+                            img[pixel_i+xx,pixel_j+yy] = 1.0
+            else: #white patch 1
+                #if not surrounded by 3 cut it
+                neighbors = np.zeros(8)
+
+                #black is 0
+
+                neighbors[0] = img[pixel_i-block_size,pixel_j]
+                neighbors[1] = img[pixel_i+block_size,pixel_j]
+                neighbors[2] = img[pixel_i,pixel_j-block_size]
+                neighbors[3] = img[pixel_i,pixel_j+block_size]
+                neighbors[4] = img[pixel_i-block_size,pixel_j-block_size]
+                neighbors[5] = img[pixel_i-block_size,pixel_j+block_size]
+                neighbors[6] = img[pixel_i+block_size,pixel_j-block_size]
+                neighbors[7] = img[pixel_i+block_size,pixel_j+block_size]
+
+
+                sum_val = np.sum(neighbors)
+                wh_threshold = NEIGHBOOR_TO_CONSIDER-black_threshold
+                if(sum_val < wh_threshold):
+                    #repaint block
+                    for xx in range(0,block_size):
+                        for yy in range(0,block_size):
+                            img[pixel_i+xx,pixel_j+yy] = 0.0
+
+
+    return img
 
 def rgb2gray(rgb):
     return np.dot(rgb[...,:3], [0.299, 0.587, 0.114])
@@ -150,6 +237,7 @@ def main(argv=None):  # pylint: disable=unused-argument
                 print ('Loading ' + full_path)
                 img = mpimg.imread(full_path)
                 img = rgb2gray(img)
+
                 print('img: ',img.shape)
                 data_node = np.reshape(img[:,:], (1,IMG_SIZE,IMG_SIZE,1))
                 #print('data_node: ', data_node.shape)
@@ -162,11 +250,24 @@ def main(argv=None):  # pylint: disable=unused-argument
                 res = np.reshape(res, (res.shape[1], res.shape[2]))
                 print('res: ', res.shape)
                 res = img_float_to_uint8(res)
+                print(res)
+                res = res/255
+                res_igor = binarize(res, 16, 0.4)
 
-                res = binarize(res, 16, 0.4*255)
+                img_tv = 1-img
+                tv_denoise = denoise_tv_chambolle(img_tv, weight=10)
+                tv_denoise_bw = binarize(tv_denoise,16,0.7)
+                tv_denoise_bw = remove_filtering_neighbors(tv_denoise_bw,7,block_size=16)
 
+                tv_denoise_bw = 1-tv_denoise_bw
+                f, axarr = plt.subplots(2,2)
+                axarr[0,0].imshow(img)
+                axarr[0,1].imshow(tv_denoise_bw)
+                axarr[1,0].imshow(res_igor)
+                
+                plt.show()
 
-                im_save(out_dir+ff, res)
+                im_save(out_dir+ff, res_igor)
                 print('File %s saved!' %(out_dir+ff))
 
             else:
