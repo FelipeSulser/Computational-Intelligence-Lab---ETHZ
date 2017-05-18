@@ -15,7 +15,7 @@ import tensorflow.python.platform
 import numpy
 import tensorflow as tf
 from scipy import ndimage
-import math
+import math 
 
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
@@ -31,9 +31,9 @@ RESTORE_MODEL = False # If True, restore existing model instead of training a ne
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
-MODE = 'train' # 'train' or 'predict'
+MODE = 'predict' # 'train' or 'predict'
 STARTING_ID = 1 # 21, 41...
-TRAINING_SIZE = 100 
+TRAINING_SIZE = 10
 
 TEST_START_ID = 1
 TEST_SIZE = 50
@@ -93,11 +93,13 @@ def img_crop_context(im, w, h,context_factor):
 
 
 
+
     list_patches = []
     imgheight = padded_img.shape[0]
     imgwidth = padded_img.shape[1]
     
     #print('padded_img: ', padded_img.shape)
+
 
     for i in range(cf,imgheight-cf,h):
         for j in range(cf,imgwidth-cf,w):
@@ -281,7 +283,7 @@ def print_predictions(predictions, labels):
 
 # Convert array of labels to an image
 def label_to_img(imgwidth, imgheight, w, h, labels):
-    array_labels = numpy.zeros([imgwidth, imgheight])
+    array_labels = numpy.zeros([imgheight, imgwidth])
     idx = 0
     for i in range(0,imgheight,h):
         for j in range(0,imgwidth,w):
@@ -290,7 +292,7 @@ def label_to_img(imgwidth, imgheight, w, h, labels):
             # else:
             #     l = 0
             l = labels[idx][0]
-            array_labels[j:j+w, i:i+h] = l
+            array_labels[i:i+h, j:j+w] = l
 
             idx = idx + 1
     return array_labels
