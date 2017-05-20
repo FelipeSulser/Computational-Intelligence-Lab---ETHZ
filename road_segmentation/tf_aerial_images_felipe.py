@@ -14,6 +14,7 @@ import code
 import tensorflow.python.platform
 import numpy as np
 import tensorflow as tf
+import scipy
 from scipy import ndimage
 import math 
 
@@ -29,10 +30,10 @@ NUM_EPOCHS = 10
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
-MODE = 'train' # 'train' or 'predict'
+MODE = 'predict' # 'train' or 'predict'
 
 STARTING_ID = 1 # 21, 41...
-TRAINING_SIZE = 100
+TRAINING_SIZE = 3
 
 TEST_START_ID = 1
 TEST_SIZE = 50
@@ -41,8 +42,11 @@ init_type = 'xavier'
 
 LOGGING = False
 
+# SUBTRACTING MEAN SUCKS A LOT!
 MEAN_IMG_PATH = (os.path.dirname(os.path.realpath(__file__)))+'/training/mean_img.png'
-MEAN_IMG = None #mpimg.imread(MEAN_IMG_PATH)
+TEST_MEAN_IMG_PATH = (os.path.dirname(os.path.realpath(__file__)))+'/training/test_mean_img.png'
+MEAN_IMG = None # mpimg.imread(MEAN_IMG_PATH)
+TEST_MEAN_IMG = None # mpimg.imread(TEST_MEAN_IMG_PATH)
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
@@ -672,6 +676,10 @@ def main(argv=None):  # pylint: disable=unused-argument
                 fname = "test_"+str(i)
                 image_filename = test_set_dir + fname+"/"+fname + ".png"
                 img = mpimg.imread(image_filename)
+                if TEST_MEAN_IMG != None:
+                    print('img: ',img.shape)
+                    print('MEAN_IMG: ', TEST_MEAN_IMG.shape)
+                    img = img - TEST_MEAN_IMG
                 # predict label
                 #img_prediction = get_prediction(img)
                 cropped = img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR)
