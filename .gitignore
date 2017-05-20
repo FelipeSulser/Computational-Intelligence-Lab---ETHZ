@@ -6,3 +6,4 @@ road_segmentation/predictions_training/
 road_segmentation/predictions_test/
 road_segmentation/datafiles/
 road_segmentation/temp.py
+road_segmentation/*submission.csv

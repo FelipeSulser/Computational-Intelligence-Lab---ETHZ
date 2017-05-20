@@ -29,25 +29,26 @@ NUM_EPOCHS = 10
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
-MODE = 'predict' # 'train' or 'predict'
+MODE = 'train' # 'train' or 'predict'
 
-STARTING_ID = 101 # 21, 41...
-TRAINING_SIZE = 3
+STARTING_ID = 1 # 21, 41...
+TRAINING_SIZE = 100
 
-TEST_START_ID = 41
-TEST_SIZE = 10
+TEST_START_ID = 1
+TEST_SIZE = 50
 
 init_type = 'xavier'
 
 LOGGING = False
 
-MEAN_IMG = None
+MEAN_IMG_PATH = (os.path.dirname(os.path.realpath(__file__)))+'/training/mean_img.png'
+MEAN_IMG = None #mpimg.imread(MEAN_IMG_PATH)
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
 
-CONTEXT_ADDITIVE_FACTOR = 16 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
+CONTEXT_ADDITIVE_FACTOR = 24 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
 IMG_PATCH_SIZE = 16 #should be at least dividor of 608
 CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
 
@@ -136,6 +137,14 @@ def extract_data(filename, num_images, starting_id, context_factor):
         if os.path.isfile(image_filename):
             print ('Loading ' + image_filename)
             img = mpimg.imread(image_filename)
+            # plt.imshow(img)
+            # plt.title('original')
+            # plt.show()
+            if MEAN_IMG != None:
+                img = img - MEAN_IMG
+                # plt.imshow(img)
+                # plt.title('shifted')
+                # plt.show()
             #img = Image.open(image_filename)
             #downscaled = img.resize((200,200)) #HARDCODED
             #downscaled = np.asarray(downscaled)
@@ -441,31 +450,6 @@ def main(argv=None):  # pylint: disable=unused-argument
         return img_prediction
 
 
-    def generate_real_out(filename,image_idx):
-        imageid = image_idx
-        fname = "test_"+str(image_idx)
-
-        image_filename = filename +fname+"/"+fname+".png"
-        img = mpimg.imread(image_filename)
-        #img = Image.open(image_filename)
-        #downscaled = img.resize((200,200)) #HARDCODED
-        #img = np.asarray(downscaled)
-        img_prediction = get_prediction(img)
-        return img_prediction
-
-
-    # Get prediction overlaid on the original image for given input file
-    def get_prediction_with_overlay(filename, image_idx):
-
-        imageid = "satImage_%.3d" % image_idx
-        image_filename = filename + imageid + ".png"
-        img = mpimg.imread(image_filename)
-
-        img_prediction = get_prediction(img)
-        oimg = make_img_overlay(img, img_prediction)
-
-        return oimg
-
 
     # We will replicate the model structure for the training subgraph, as well
     # as the evaluation subgraphs, while sharing the trainable parameters.
@@ -673,6 +657,14 @@ def main(argv=None):  # pylint: disable=unused-argument
                 os.mkdir(real_prediction)
             if not os.path.isdir(real_prediction+"result/"):
                 os.mkdir(real_prediction+"result/")
+
+
+            n_patches_in_test_img = int(math.ceil(608 / IMG_PATCH_SIZE) ** 2)
+            print('n_patches_in_test_img: ', n_patches_in_test_img)
+            predict_data_node = tf.placeholder( tf.float32,
+                    shape=(n_patches_in_test_img, CONTEXT_PATCH, CONTEXT_PATCH, NUM_CHANNELS))
+
+
             for i in range(TEST_START_ID, TEST_START_ID+TEST_SIZE):
                 print("Prediction for img: "+str(i))
 
@@ -681,7 +673,18 @@ def main(argv=None):  # pylint: disable=unused-argument
                 image_filename = test_set_dir + fname+"/"+fname + ".png"
                 img = mpimg.imread(image_filename)
                 # predict label
-                img_prediction = get_prediction(img)
+                #img_prediction = get_prediction(img)
+                cropped = img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR)
+                cropped = np.asarray(cropped)
+
+                #data_node = tf.constant(cropped)
+                output = tf.nn.softmax(model(predict_data_node))
+                output_prediction = s.run(output, feed_dict={predict_data_node: cropped})
+                img_prediction = label_to_img(img.shape[0], img.shape[1], IMG_PATCH_SIZE, IMG_PATCH_SIZE, output_prediction)
+
+
+
+
                 # overlay and save
                 oimg = make_img_overlay(img, img_prediction)
                 oimg.save(real_prediction + "overlay_" + str(i) + ".png")
