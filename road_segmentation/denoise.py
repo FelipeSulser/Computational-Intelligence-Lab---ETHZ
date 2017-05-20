@@ -9,14 +9,14 @@ import scipy.misc
 from sklearn.decomposition import MiniBatchDictionaryLearning
 from sklearn.feature_extraction.image import extract_patches_2d
 from sklearn.feature_extraction.image import reconstruct_from_patches_2d
-from sklearn.utils.testing import SkipTest
+
 from sklearn.utils.fixes import sp_version
 from skimage import img_as_float
 from scipy import signal
 from scipy.signal import convolve2d
 from skimage import color, data, restoration
-from skimage.restoration import (denoise_tv_chambolle, denoise_bilateral,
-                                 denoise_wavelet, estimate_sigma)
+from skimage.restoration import denoise_tv_chambolle
+                                 
 from skimage import data, img_as_float, color
 from skimage.util import random_noise
 
@@ -111,12 +111,12 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
     return img
 
     
-save_dir = "/Users/felipesulser/Dropbox/ETH/CIL/TensorFlow/predictions_test/denoised/"
+save_dir = "predictions_test/denoised/"
 if not os.path.isdir(save_dir):
     os.mkdir(save_dir) 
 for i in range(1, 51):
     print("Denoising img: "+str(i))
-    mydir = "/Users/felipesulser/Dropbox/ETH/CIL/TensorFlow/predictions_test/result/"
+    mydir = "predictions_test/result/"
     imageid = "prediction_"+str(i)
     image_filename = mydir +imageid+ ".png"
     img = mpimg.imread(image_filename)
