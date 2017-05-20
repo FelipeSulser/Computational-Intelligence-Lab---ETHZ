@@ -4,7 +4,7 @@
 
 ### Preproces
 - Histogram equalization failed
-- ...
+- Subtracting mean image failed
 
 ### Feature Selection
 - Patch size x-y means that x is the core of the patch and y is the added context
@@ -20,4 +20,4 @@
 ### Post-processing
 - Convolution of size 9x9 to smooth
 - Binarize the image with threshold 0.5
-- 'remove_filtering_neighbors()' with 7 neighboors
+- `remove_filtering_neighbors()` with 7 neighboors
