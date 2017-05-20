@@ -12,7 +12,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import code
 import tensorflow.python.platform
-import numpy
+import numpy as np
 import tensorflow as tf
 from scipy import ndimage
 import math 
@@ -21,33 +21,26 @@ NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
 
-VALIDATION_SIZE = 5  # Size of the validation set.
 SEED = 66478  # Set to None for random seed.
-#TODO change batch size
+
 BATCH_SIZE = 32 # has to be dividable by 2 so we can split 2 classes to be equal sized
 #TODO change epoch number
 NUM_EPOCHS = 10
-RESTORE_MODEL = False # If True, restore existing model instead of training a new one
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
-MODE = 'predict' # 'train' or 'predict'
+MODE = 'train' # 'train' or 'predict'
 
-STARTING_ID = 151 # 21, 41...
-TRAINING_SIZE = 1
+STARTING_ID = 41 # 21, 41...
+TRAINING_SIZE = 60
 
 TEST_START_ID = 41
 TEST_SIZE = 10
 
 
-
-
-
-
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
-#TODO change patch size
 
 CONTEXT_ADDITIVE_FACTOR = 16 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
 IMG_PATCH_SIZE = 16 #should be at least dividor of 608
@@ -65,30 +58,10 @@ else:
     print('Please set FC1_WIDTH!!')
 
 
-NUMFILES = 0
-NAMEFILES = []
-
-
-
 tf.app.flags.DEFINE_string('train_dir', 'datafiles',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 FLAGS = tf.app.flags.FLAGS
-
-# Extract patches from a given image
-def img_crop(im, w, h):
-    list_patches = []
-    imgwidth = im.shape[0]
-    imgheight = im.shape[1]
-    is_2d = len(im.shape) < 3
-    for i in range(0,imgheight,h):
-        for j in range(0,imgwidth,w):
-            if is_2d:
-                im_patch = im[i:i+w, j:j+h]
-            else:
-                im_patch = im[i:i+w, j:j+h, :]
-            list_patches.append(im_patch)
-    return list_patches
 
 
 # Extract patches from a given image
@@ -100,108 +73,52 @@ def img_crop_context(im, w, h,context_factor):
     cf = context_factor
     is_2d = len(im.shape) < 3
     if is_2d:
-        padded_img = numpy.pad(im, cf, padding_type)
+        padded_img = np.pad(im, cf, padding_type)
     else:
-        padded_img = numpy.pad(im, ((cf,cf),(cf,cf),(0,0)), padding_type)
-
-
-
+        padded_img = np.pad(im, ((cf,cf),(cf,cf),(0,0)), padding_type)
 
     list_patches = []
     imgheight = padded_img.shape[0]
     imgwidth = padded_img.shape[1]
-    
-    #print('padded_img: ', padded_img.shape)
-
-
+ 
     for i in range(cf,imgheight-cf,h):
         for j in range(cf,imgwidth-cf,w):
-            im_patch = numpy.zeros(1)
+            im_patch = np.zeros(1)
             
             if is_2d:
                 im_patch = padded_img[i-cf:i+h+cf, j-cf:j+w+cf]
                 if im_patch.shape[0] < 2*cf+h and im_patch.shape[1] == 2*cf+w:
                     pad_size = 2*cf+h - im_patch.shape[0]
-                    im_patch = numpy.pad(im_patch, ((0,pad_size),(0,0) ), padding_type)
+                    im_patch = np.pad(im_patch, ((0,pad_size),(0,0) ), padding_type)
                     
                 elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] == 2*cf+h:
                     pad_size = 2*cf+w - im_patch.shape[1]
-                    im_patch = numpy.pad(im_patch, ((0,0),(0,pad_size)), padding_type)
+                    im_patch = np.pad(im_patch, ((0,0),(0,pad_size)), padding_type)
                     
                 elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] < 2*cf+h:
                     pad_size0 = 2*cf+h - im_patch.shape[0]
                     pad_size1 = 2*cf+w - im_patch.shape[1]
-                    im_patch = numpy.pad(im_patch, (( 0,pad_size0),(0,pad_size1)), padding_type)
+                    im_patch = np.pad(im_patch, (( 0,pad_size0),(0,pad_size1)), padding_type)
                     
             else:
                 im_patch = padded_img[i-cf:i+h+cf, j-cf:j+w+cf, :]
                 if im_patch.shape[0] < 2*cf+h and im_patch.shape[1] == 2*cf+w:
                     pad_size = 2*cf+h - im_patch.shape[0]
-                    im_patch = numpy.pad(im_patch, ((0,pad_size),(0,0) ,(0,0)), padding_type)
+                    im_patch = np.pad(im_patch, ((0,pad_size),(0,0) ,(0,0)), padding_type)
                     
                 elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] == 2*cf+h:
                     pad_size = 2*cf+w - im_patch.shape[1]
-                    im_patch = numpy.pad(im_patch, ((0,0),(0,pad_size), (0,0)), padding_type)
+                    im_patch = np.pad(im_patch, ((0,0),(0,pad_size), (0,0)), padding_type)
                     
                 elif im_patch.shape[1] < 2*cf+w and im_patch.shape[0] < 2*cf+h:
                     pad_size0 = 2*cf+h - im_patch.shape[0]
                     pad_size1 = 2*cf+w - im_patch.shape[1]
-                    im_patch = numpy.pad(im_patch, (( 0,pad_size0),(0,pad_size1),(0,0)), padding_type)
+                    im_patch = np.pad(im_patch, (( 0,pad_size0),(0,pad_size1),(0,0)), padding_type)
                     
-
-
             list_patches.append(im_patch)
 
     return list_patches
 
-# OLD VERSION!!! use img_crop_context() instead
-# def _img_crop_context_depr(im, w, h,context_factor):
-#     list_patches = []
-#     imgwidth = im.shape[0]
-#     imgheight = im.shape[1]
-#     is_2d = len(im.shape) < 3
-#     for i in range(0,imgheight,h):
-#         for j in range(0,imgwidth,w):
-#             if is_2d:
-#                 #im_patch = im[j:j+w, i:i+h]
-#                 im_patch = numpy.zeros((w+2*context_factor,h+2*context_factor))
-#                 iterx = 0
-#                 itery = 0
-#                 for x in range(j - context_factor,j+w+context_factor):
-#                     itery = 0
-#                     for y in range(i - context_factor,i+h+context_factor):
-#                         if x >= 0 and y >= 0 and x < imgwidth and y < imgheight:
-#                             im_patch[iterx,itery] = im[x,y]
-                        
-#                         itery = itery + 1
-#                     iterx = iterx + 1
-#                 #print("INDEX: ["+str(j-context_factor)+":"+str(j+w+context_factor)+", "+str(i-context_factor)+":"+str(i+h+context_factor)+"]")
-#                 #im_patch = im[(j-context_factor):(j+w+context_factor), (i-context_factor):(i+h+context_factor)]
-#             else:
-#                 #im_patch = im[j:j+w, i:i+h, :]
-#                 #print("INDEX: ["+str(j-context_factor)+":"+str(j+w+context_factor)+", "+str(i-context_factor)+":"+str(i+h+context_factor)+"]")
-#                 #im_patch = im[(j-context_factor):(j+w+context_factor), (i-context_factor):(i+h+context_factor),:]
-#                 im_patch = numpy.zeros((w+2*context_factor,h+2*context_factor,3))
-#                 #print(im_patch.shape)
-#                 iterx = 0
-#                 itery = 0
-#                 for x in range(j - context_factor,j+w+context_factor):
-#                     itery = 0
-#                     for y in range(i - context_factor,i+h+context_factor):
-#                         #print(str(x) + " "+str(y)+" and "+str(iterx)+" " + str(itery))
-#                         if x >= 0 and y >= 0 and x < imgwidth and y < imgheight:
-#                             im_patch[iterx,itery,:] = im[x,y,:]
-                        
-#                         itery = itery + 1
-#                     iterx = iterx + 1
-#                 # img_data = Image.fromarray(numpy.uint8(im_patch*255))
-#                 # plt.imshow(img_data)
-#                 # plt.show()
-#             #print(im_patch)
-#             list_patches.append(im_patch)
-#     #print(list_patches[250][:,:,0])
-#     print('list_patches[0].shape: ', list_patches[0].shape)
-#     return list_patches
 
 def extract_data(filename, num_images, starting_id, context_factor):
     """Extract the images into a 4D tensor [image index, y, x, channels].
@@ -216,7 +133,7 @@ def extract_data(filename, num_images, starting_id, context_factor):
             img = mpimg.imread(image_filename)
             #img = Image.open(image_filename)
             #downscaled = img.resize((200,200)) #HARDCODED
-            #downscaled = numpy.asarray(downscaled)
+            #downscaled = np.asarray(downscaled)
             imgs.append(img)
         else:
             print ('File ' + image_filename + ' does not exist')
@@ -228,18 +145,14 @@ def extract_data(filename, num_images, starting_id, context_factor):
 
 
     img_patches = [img_crop_context(imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE,context_factor) for i in range(num_images)]
-    print('img_patches: ', len(img_patches))
-    print('img_patches[0]: ', len(img_patches[0]))
-    print('img_patches[0][0]: ', img_patches[0][0].shape)
     data = [img_patches[i][j] for i in range(len(img_patches)) for j in range(len(img_patches[i]))]
-    print('data[0]: ', data[0].shape)
-    data = numpy.asarray(data)
+    data = np.asarray(data)
     return data
         
 # Assign a label to a patch v
 def value_to_class(v):
     foreground_threshold = 0.25 # percentage of pixels > 1 required to assign a foreground label to a patch
-    df = numpy.sum(v)
+    df = np.sum(v)
     if df > foreground_threshold:
         return [1, 0]
     else:
@@ -256,35 +169,34 @@ def extract_labels(filename, num_images, starting_id, context_factor):
             print ('Loading ' + image_filename)
             #img = Image.open(image_filename)
             #downscaled = img.resize((200,200)) #HARDCODED
-            #downscaled = numpy.asarray(downscaled)
+            #downscaled = np.asarray(downscaled)
             img = mpimg.imread(image_filename)
             gt_imgs.append(img)
         else:
             print ('File ' + image_filename + ' does not exist')
 
     num_images = len(gt_imgs)
-    # TODO: check with felipe if this is meaningful.
-    #       it means that we base our labels only on the core of the patch, not including the contet added
+    # it means that we base our labels only on the core of the patch, not including the contet added
     context_factor = 0
     gt_patches = [img_crop_context(gt_imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE,context_factor) for i in range(num_images)]
-    data = numpy.asarray([gt_patches[i][j] for i in range(len(gt_patches)) for j in range(len(gt_patches[i]))])
-    labels = numpy.asarray([value_to_class(numpy.mean(data[i])) for i in range(len(data))])
+    data = np.asarray([gt_patches[i][j] for i in range(len(gt_patches)) for j in range(len(gt_patches[i]))])
+    labels = np.asarray([value_to_class(np.mean(data[i])) for i in range(len(data))])
 
     # Convert to dense 1-hot representation.
-    return labels.astype(numpy.float32)
+    return labels.astype(np.float32)
 
 
 def error_rate(predictions, labels):
     """Return the error rate based on dense predictions and 1-hot labels."""
     return 100.0 - (
         100.0 *
-        numpy.sum(numpy.argmax(predictions, 1) == numpy.argmax(labels, 1)) /
+        np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1)) /
         predictions.shape[0])
 
 # Write predictions from neural network to a file
 def write_predictions_to_file(predictions, labels, filename):
-    max_labels = numpy.argmax(labels, 1)
-    max_predictions = numpy.argmax(predictions, 1)
+    max_labels = np.argmax(labels, 1)
+    max_predictions = np.argmax(predictions, 1)
     file = open(filename, "w")
     n = predictions.shape[0]
     for i in range(0, n):
@@ -293,13 +205,13 @@ def write_predictions_to_file(predictions, labels, filename):
 
 # Print predictions from neural network
 def print_predictions(predictions, labels):
-    max_labels = numpy.argmax(labels, 1)
-    max_predictions = numpy.argmax(predictions, 1)
+    max_labels = np.argmax(labels, 1)
+    max_predictions = np.argmax(predictions, 1)
     print (str(max_labels) + ' ' + str(max_predictions))
 
 # Convert array of labels to an image
 def label_to_img(imgwidth, imgheight, w, h, labels):
-    array_labels = numpy.zeros([imgheight, imgwidth])
+    array_labels = np.zeros([imgheight, imgwidth])
     idx = 0
     for i in range(0,imgheight,h):
         for j in range(0,imgwidth,w):
@@ -314,30 +226,30 @@ def label_to_img(imgwidth, imgheight, w, h, labels):
     return array_labels
 
 def img_float_to_uint8(img):
-    rimg = img - numpy.min(img)
-    rimg = (rimg / numpy.max(rimg) * PIXEL_DEPTH).round().astype(numpy.uint8)
+    rimg = img - np.min(img)
+    rimg = (rimg / np.max(rimg) * PIXEL_DEPTH).round().astype(np.uint8)
     return rimg
 
-def concatenate_images(img, gt_img):
-    nChannels = len(gt_img.shape)
-    w = gt_img.shape[0]
-    h = gt_img.shape[1]
-    if nChannels == 3:
-        cimg = numpy.concatenate((img, gt_img), axis=1)
-    else:
-        gt_img_3c = numpy.zeros((w, h, 3), dtype=numpy.uint8)
-        gt_img8 = img_float_to_uint8(gt_img)          
-        gt_img_3c[:,:,0] = gt_img8
-        gt_img_3c[:,:,1] = gt_img8
-        gt_img_3c[:,:,2] = gt_img8
-        img8 = img_float_to_uint8(img)
-        cimg = numpy.concatenate((img8, gt_img_3c), axis=1)
-    return cimg
+# def concatenate_images(img, gt_img):
+#     nChannels = len(gt_img.shape)
+#     w = gt_img.shape[0]
+#     h = gt_img.shape[1]
+#     if nChannels == 3:
+#         cimg = np.concatenate((img, gt_img), axis=1)
+#     else:
+#         gt_img_3c = np.zeros((w, h, 3), dtype=np.uint8)
+#         gt_img8 = img_float_to_uint8(gt_img)          
+#         gt_img_3c[:,:,0] = gt_img8
+#         gt_img_3c[:,:,1] = gt_img8
+#         gt_img_3c[:,:,2] = gt_img8
+#         img8 = img_float_to_uint8(img)
+#         cimg = np.concatenate((img8, gt_img_3c), axis=1)
+#     return cimg
 
 def make_img_overlay(img, predicted_img):
     w = img.shape[0]
     h = img.shape[1]
-    color_mask = numpy.zeros((w, h, 3), dtype=numpy.uint8)
+    color_mask = np.zeros((w, h, 3), dtype=np.uint8)
     color_mask[:,:,0] = predicted_img*PIXEL_DEPTH
 
     img8 = img_float_to_uint8(img)
@@ -354,12 +266,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     test_set_dir = (os.path.dirname(os.path.realpath(__file__)))+'/test_set_images/'
     # Extract it into numpy arrays.
 
-    NUMFILES = len([name for name in os.listdir(test_set_dir) if name != ".DS_Store"])
-    NAMEFILES = [name for name in os.listdir(test_set_dir) if name != ".DS_Store"]
-
     num_epochs = NUM_EPOCHS
-
-
 
     train_data = extract_data(train_data_filename, TRAINING_SIZE, STARTING_ID, CONTEXT_ADDITIVE_FACTOR)
     train_labels = extract_labels(train_labels_filename, TRAINING_SIZE, STARTING_ID, CONTEXT_ADDITIVE_FACTOR)
@@ -372,28 +279,30 @@ def main(argv=None):  # pylint: disable=unused-argument
     idx0 = [i for i, j in enumerate(train_labels) if j[0] == 1]
     idx1 = [i for i, j in enumerate(train_labels) if j[1] == 1]
 
-    print ('Number of data points per class: road = ' + str(len(idx0)) + ' back = ' + str(len(idx1)))
-    min_c = min(len(idx0), len(idx1))
+    class_road_size = len(idx0)
+    class_back_size = len(idx1)
+
+    print ('Number of data points per class: road = ' + str(class_road_size) + ' back = ' + str(class_back_size))
+    min_c = min(class_road_size, class_back_size)
     print ('Balancing training data...')
 
-    numpy.random.shuffle(idx0)
-    numpy.random.shuffle(idx1)
+
+    new_indices_all = idx0 + idx1
+
+    np.random.shuffle(idx0)
+    np.random.shuffle(idx1)
 
     new_indices = idx0[0:min_c] + idx1[0:min_c]
-
-    # train_data_road = train_data[idx0,:,:,:]
-    # train_data_back = train_data[idx1,:,:,:]
+    
+    #train_data_all = train_data[new_indices_all,:,:,:]
     train_data = train_data[new_indices,:,:,:]
 
-    # train_labels_road = train_labels[idx0]
-    # train_labels_back = train_labels[idx1]
+    #train_labels_all = train_labels[new_indices_all]
     train_labels = train_labels[new_indices]
 
+    train_size = 2 * min_c
+    print('train_size: ', train_size)
 
-    train_size = train_labels.shape[0]
-    # train_size_road = train_labels_road.shape[0]
-    # train_size_back = train_labels_back.shape[0]
-    train_size_min = min_c
 
     c0 = 0
     c1 = 0
@@ -527,7 +436,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     # Get prediction for given input image 
     def get_prediction(img):
         cropped = img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR)
-        data = numpy.asarray(cropped)
+        data = np.asarray(cropped)
 
         data_node = tf.constant(data)
         output = tf.nn.softmax(model(data_node))
@@ -536,26 +445,26 @@ def main(argv=None):  # pylint: disable=unused-argument
 
         return img_prediction
 
-    # Get a concatenation of the prediction and groundtruth for given input file
-    def get_prediction_with_groundtruth(filename, image_idx):
+    # # Get a concatenation of the prediction and groundtruth for given input file
+    # def get_prediction_with_groundtruth(filename, image_idx):
 
-        imageid = "satImage_%.3d" % image_idx
-        image_filename = filename + imageid + ".png"
-        img = mpimg.imread(image_filename)
-        img_prediction = get_prediction(img)
-        cimg = concatenate_images(img, img_prediction)
+    #     imageid = "satImage_%.3d" % image_idx
+    #     image_filename = filename + imageid + ".png"
+    #     img = mpimg.imread(image_filename)
+    #     img_prediction = get_prediction(img)
+    #     cimg = concatenate_images(img, img_prediction)
 
-        return cimg
+    #     return cimg
 
-    def gtruth_pred(filename,image_idx):
-        imageid = image_idx
-        fname = "test_"+str(image_idx)
+    # def gtruth_pred(filename,image_idx):
+    #     imageid = image_idx
+    #     fname = "test_"+str(image_idx)
 
-        image_filename = filename +fname+"/"+fname+".png"
-        img = mpimg.imread(image_filename)
-        img_prediction = get_prediction(img)
-        cimg = concatenate_images(img,img_prediction)
-        return cimg
+    #     image_filename = filename +fname+"/"+fname+".png"
+    #     img = mpimg.imread(image_filename)
+    #     img_prediction = get_prediction(img)
+    #     cimg = concatenate_images(img,img_prediction)
+    #     return cimg
 
     def generate_real_out(filename,image_idx):
         imageid = image_idx
@@ -565,7 +474,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         img = mpimg.imread(image_filename)
         #img = Image.open(image_filename)
         #downscaled = img.resize((200,200)) #HARDCODED
-        #img = numpy.asarray(downscaled)
+        #img = np.asarray(downscaled)
         img_prediction = get_prediction(img)
         return img_prediction
 
@@ -827,30 +736,41 @@ def main(argv=None):  # pylint: disable=unused-argument
                                                     graph=s.graph)
             
             # Loop through training steps.
-            print('train_size_min: ', train_size_min)
-            print ('Total number of iterations = ' + str(int(num_epochs * train_size_min / HALF_BATCH)))
+
+            print ('Total number of iterations = ' + str(int(num_epochs * train_size / BATCH_SIZE)))
 
 
 
             for iepoch in range(num_epochs):
 
                 # Permute training indices
-                perm_indices = numpy.random.permutation(train_size)
-                # perm_indices_road = numpy.random.permutation(train_size_road)#[:train_size_min]
-                # perm_indices_back = numpy.random.permutation(train_size_back)#[:train_size_min]
-                
+                perm_indices = np.random.permutation(train_size)
+                # perm_road_idx = np.random.permutation(range(0,class_road_size))[:min_c]
+                # perm_back_idx = np.random.permutation(range(class_road_size, class_road_size + class_back_size))[:min_c]
+                # perm_indices_all = np.concatenate([perm_road_idx, perm_back_idx], axis=0)
+                # np.random.shuffle(perm_indices_all)
+                # if len(perm_indices) != len(perm_indices_all):
+                #     print('ERROR: these two should be the same!')
+                #     print('  ', len(perm_indices))
+                #     print('  ', len(perm_indices_all))
 
                 for step in range (int(train_size / BATCH_SIZE)):
-                    offset = (step * BATCH_SIZE) % (train_size_min - BATCH_SIZE)
-                    offset_new = (step * HALF_BATCH) % (train_size_min - HALF_BATCH)
+                    offset = (step * BATCH_SIZE) % (train_size - BATCH_SIZE)
                     
-                    batch_indices = perm_indices[offset:(offset + HALF_BATCH*2)]
-
+                    batch_indices = perm_indices[offset:(offset + BATCH_SIZE)]
+                    #batch_indices_new = perm_indices_all[offset:(offset + BATCH_SIZE)]
+                    
 
                     # Compute the offset of the current minibatch in the data.
                     # Note that we could use better randomization across epochs.
                     batch_data = train_data[batch_indices, :, :, :]
                     batch_labels = train_labels[batch_indices]
+                    #batch_data_new = train_data_all[batch_indices_new, :, :, :]
+                    #batch_labels_new = train_labels_all[batch_indices_new]
+
+                    # plt.imshow(batch_data_new[4,:,:,:])
+                    # plt.title('Road' if batch_labels_new[4,0]==1  else 'Background')
+                    # plt.show()
 
 
                     # This dictionary maps the batch data (as a numpy array) to the

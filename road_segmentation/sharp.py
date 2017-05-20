@@ -41,15 +41,12 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
     imgheight = img.shape[1]
     
     numblockwidth = int(imgwidth/block_size)
-
     numblockheight = int(imgheight/block_size)
 
     for i in range(1,numblockwidth-2):
         for j in range(1, numblockheight-2):
             pixel_i = i*block_size
             pixel_j = j*block_size
-
-
 
 
             if img[pixel_i,pixel_j] == 0: #if patch is black
@@ -69,8 +66,7 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
 
                 sum_val = np.sum(neighbors)
                 if(sum_val > black_threshold):
-                    #repaint block
-                    print('  Block repainted to BLACK!')
+                    #print('  Block repainted to BLACK!')
                     for xx in range(0,block_size):
                         for yy in range(0,block_size):
                             img[pixel_i+xx,pixel_j+yy] = 1.0
@@ -93,7 +89,7 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
                 sum_val = np.sum(neighbors)
                 wh_threshold = NEIGHBOOR_TO_CONSIDER-black_threshold+1
                 if(sum_val < wh_threshold):
-                    print('  Block repainted to WHITE!')
+                    #print('  Block repainted to WHITE!')
                     for xx in range(0,block_size):
                         for yy in range(0,block_size):
                             img[pixel_i+xx,pixel_j+yy] = 0.0
@@ -165,7 +161,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Extract it into np arrays.
     
-
     
     IN_FILES = [name for name in os.listdir(data_dir) if name.endswith('.png')]
 
