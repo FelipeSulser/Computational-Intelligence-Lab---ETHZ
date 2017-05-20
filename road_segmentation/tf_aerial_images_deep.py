@@ -17,7 +17,7 @@ NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
 
-VALIDATION_SIZE = 10  # Size of the validation set.
+VALIDATION_SIZE = 1  # Size of the validation set.
 SEED = None  # Set to None for random seed.
 #TODO change batch size
 BATCH_SIZE = 32 # 64
@@ -28,8 +28,8 @@ RECORDING_STEP = 1000
 DOWNSCALE = 1
 
 MODE = 'train' # 'train' or 'predict'
-STARTING_ID = 101 # 21, 41...
-TRAINING_SIZE = 50
+STARTING_ID = 1 # 21, 41...
+TRAINING_SIZE = 20
 
 init_type = 'xavier'
 
@@ -719,15 +719,18 @@ def main(argv=None):  # pylint: disable=unused-argument
         total_parameters += variable_parametes
     print("Number of variables in model: "+str(total_parameters))
 
+    print('validation_data: ', validation_data.shape)
     data_node_validation = tf.constant(validation_data)
-    output_validation = tf.nn.softmax(model(data_node_validation))
+    validation_node = model(data_node_validation)
+    output_validation = tf.nn.softmax(validation_node)
+
     # Create a local session to run this computation.
     tf.get_default_graph().finalize()
     with tf.Session() as s:
 
         if MODE == 'predict':
             # Restore variables from disk.
-            saver.restore(s, FLAGS.train_dir + "/model.ckpt")
+            saver.restore(s, FLAGS.train_dir + "/model_deep.ckpt")
             print("Model restored.")
 
 
@@ -771,7 +774,7 @@ def main(argv=None):  # pylint: disable=unused-argument
                 print ('Initialized!')
             else:
                 # we have the model already saved, so we dont need to init, but restore the existing model
-                saver.restore(s, FLAGS.train_dir + "/model.ckpt")
+                saver.restore(s, FLAGS.train_dir + "/model_deep.ckpt")
 
 
 
@@ -815,14 +818,9 @@ def main(argv=None):  # pylint: disable=unused-argument
                             _, l, lr, predictions = s.run(
                                 [ optimizer, loss, learning_rate, train_prediction],
                                 feed_dict=feed_dict)
-                        #summary_str = s.run(summary_op, feed_dict=feed_dict)
-                        #summary_writer.add_summary(summary_str, step)
-                        #summary_writer.flush()
-
-                        # print_predictions(predictions, batch_labels)
 
 
-                        
+                         
                         print ('Epoch %.2f' % (iepoch))
                         print ('Minibatch loss: %.3f, learning rate: %.6f' % (l, lr))
                         print ('Minibatch error: %.1f%%' % error_rate(predictions,
@@ -838,10 +836,10 @@ def main(argv=None):  # pylint: disable=unused-argument
                 # Save the variables to disk.
                 save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
                 print("Model saved in file: %s" % save_path)
-
-            print("VALIDATION:")            
-            output_prediction_validation = s.run(output_validation)
-            print("ERROR RATE: "+str(error_rate(output_prediction_validation,validation_labels))+"%")  
+                #print("VALIDATION:")            
+                output_prediction_validation = s.run(output_validation)
+                print("ERROR RATE: "+str(error_rate(output_prediction_validation,validation_labels))+"%") 
+            
 
 
 

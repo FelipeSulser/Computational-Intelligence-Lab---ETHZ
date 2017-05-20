@@ -29,14 +29,19 @@ NUM_EPOCHS = 10
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
-MODE = 'train' # 'train' or 'predict'
+MODE = 'predict' # 'train' or 'predict'
 
-STARTING_ID = 41 # 21, 41...
-TRAINING_SIZE = 60
+STARTING_ID = 101 # 21, 41...
+TRAINING_SIZE = 3
 
 TEST_START_ID = 41
 TEST_SIZE = 10
 
+init_type = 'xavier'
+
+LOGGING = False
+
+MEAN_IMG = None
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
@@ -230,21 +235,6 @@ def img_float_to_uint8(img):
     rimg = (rimg / np.max(rimg) * PIXEL_DEPTH).round().astype(np.uint8)
     return rimg
 
-# def concatenate_images(img, gt_img):
-#     nChannels = len(gt_img.shape)
-#     w = gt_img.shape[0]
-#     h = gt_img.shape[1]
-#     if nChannels == 3:
-#         cimg = np.concatenate((img, gt_img), axis=1)
-#     else:
-#         gt_img_3c = np.zeros((w, h, 3), dtype=np.uint8)
-#         gt_img8 = img_float_to_uint8(gt_img)          
-#         gt_img_3c[:,:,0] = gt_img8
-#         gt_img_3c[:,:,1] = gt_img8
-#         gt_img_3c[:,:,2] = gt_img8
-#         img8 = img_float_to_uint8(img)
-#         cimg = np.concatenate((img8, gt_img_3c), axis=1)
-#     return cimg
 
 def make_img_overlay(img, predicted_img):
     w = img.shape[0]
@@ -324,15 +314,11 @@ def main(argv=None):  # pylint: disable=unused-argument
                                        shape=(BATCH_SIZE, NUM_LABELS))
 
 
-
-
     # The variables below hold all the trainable weights. They are passed an
     # initial value which will be assigned when when we call:
     # {tf.initialize_all_variables().run()}
 
-    init_type = 'xavier'
     if init_type=='normal':
-        print('We init weights with normal distribution!')
         conv1_weights = tf.Variable(
             tf.truncated_normal([5, 5, NUM_CHANNELS, 16],  # 5x5 filter, depth 32.
                                 stddev=0.1,
@@ -349,58 +335,67 @@ def main(argv=None):  # pylint: disable=unused-argument
             tf.truncated_normal([3, 3, 32, 32],
                                 stddev=0.1,
                                 seed=SEED), name='conv3_weights')
-        conv3_biases = tf.Variable(tf.constant(0.1, shape=[32]), name='conv3_biases')
+        conv3_biases = tf.Variable(tf.constant(0.01, shape=[32]), name='conv3_biases')
 
         conv4_weights = tf.Variable(
             tf.truncated_normal([3,3,32,64],
                                 stddev=0.1,
                                 seed=SEED), name='conv4_weights')
-        conv4_biases = tf.Variable(tf.constant(0.1,shape=[64]), name='conv4_biases')
-       
+        conv4_biases = tf.Variable(tf.constant(0.01,shape=[64]), name='conv4_biases')
+        
 
 
         fc1_weights = tf.Variable(  # fully connected, depth 512.
             #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
-            tf.truncated_normal([FC1_WIDTH, 128],
+            tf.truncated_normal([FC1_WIDTH, 48],
                                 stddev=0.1,
                                 seed=SEED), name='fc1_weights')
-        fc1_biases = tf.Variable(tf.constant(0.1, shape=[128]), name='fc1_biases')
+        fc1_biases = tf.Variable(tf.constant(0.01, shape=[48]), name='fc1_biases')
 
         fc2_weights = tf.Variable(  # fully connected, depth 64.
-            tf.truncated_normal([128, NUM_LABELS],
+            tf.truncated_normal([48, 16],
                                 stddev=0.1,
                                 seed=SEED), name='fc2_weights')
-        fc2_biases  = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]), name='fc2_biases')
+        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[16]), name='fc2_biases')
+
+        fc3_weights = tf.Variable(  # fully connected, depth 64.
+            tf.truncated_normal([16, NUM_LABELS],
+                                stddev=0.1,
+                                seed=SEED), name='fc3_weights')
+        fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
 
 
-
-    elif init_type == 'xavier':
-        print('We init weights with Xavier initializer!')
+ 
+    elif init_type == 'xavier': 
         conv1_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
         conv1_weights = tf.Variable( conv1_weights_init(shape=[5, 5, NUM_CHANNELS, 16]), name='conv1_weights')
-        conv1_biases = tf.Variable(tf.constant(0.01, shape=[16]), name='conv1_biases')
+        conv1_biases = tf.Variable(tf.constant(0.001, shape=[16]), name='conv1_biases')
 
         conv2_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
         conv2_weights = tf.Variable( conv2_weights_init(shape=[3, 3, 16, 32]), name='conv2_weights')
-        conv2_biases = tf.Variable(tf.constant(0.01, shape=[32]), name='conv2_biases')
+        conv2_biases = tf.Variable(tf.constant(0.001, shape=[32]), name='conv2_biases')
 
         conv3_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
         conv3_weights = tf.Variable( conv3_weights_init(shape=[3, 3, 32, 32]), name='conv3_weights')
-        conv3_biases = tf.Variable(tf.constant(0.1, shape=[32]), name='conv3_biases')
+        conv3_biases = tf.Variable(tf.constant(0.01, shape=[32]), name='conv3_biases')
 
         conv4_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
         conv4_weights = tf.Variable( conv4_weights_init(shape=[3,3,32,64]), name='conv4_weights')
-        conv4_biases = tf.Variable(tf.constant(0.1,shape=[64]), name='conv4_biases')
+        conv4_biases = tf.Variable(tf.constant(0.01,shape=[64]), name='conv4_biases')
 
 
         fc1_weights_init = tf.contrib.layers.xavier_initializer()
-        fc1_weights = tf.Variable(  fc1_weights_init(shape=[FC1_WIDTH, 128]), name='fc1_weights')
-        fc1_biases = tf.Variable(tf.constant(0.1, shape=[128]), name='fc1_biases')
+        fc1_weights = tf.Variable(  fc1_weights_init(shape=[FC1_WIDTH, 48]), name='fc1_weights')
+        fc1_biases = tf.Variable(tf.constant(0.01, shape=[48]), name='fc1_biases')
 
         fc2_weights_init = tf.contrib.layers.xavier_initializer()
-        fc2_weights = tf.Variable( fc2_weights_init(shape=[128, NUM_LABELS]), name='fc2_weights')
-        fc2_biases  = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]), name='fc2_biases')
-    else:
+        fc2_weights = tf.Variable( fc2_weights_init(shape=[48, 16]), name='fc2_weights')
+        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[16]), name='fc_biases')
+ 
+        fc3_weights_init = tf.contrib.layers.xavier_initializer()
+        fc3_weights = tf.Variable( fc2_weights_init(shape=[16, NUM_LABELS]), name='fc3_weights')
+        fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
+    else: 
         print('You have to specify some init_type')
        
 
@@ -445,26 +440,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
         return img_prediction
 
-    # # Get a concatenation of the prediction and groundtruth for given input file
-    # def get_prediction_with_groundtruth(filename, image_idx):
-
-    #     imageid = "satImage_%.3d" % image_idx
-    #     image_filename = filename + imageid + ".png"
-    #     img = mpimg.imread(image_filename)
-    #     img_prediction = get_prediction(img)
-    #     cimg = concatenate_images(img, img_prediction)
-
-    #     return cimg
-
-    # def gtruth_pred(filename,image_idx):
-    #     imageid = image_idx
-    #     fname = "test_"+str(image_idx)
-
-    #     image_filename = filename +fname+"/"+fname+".png"
-    #     img = mpimg.imread(image_filename)
-    #     img_prediction = get_prediction(img)
-    #     cimg = concatenate_images(img,img_prediction)
-    #     return cimg
 
     def generate_real_out(filename,image_idx):
         imageid = image_idx
@@ -491,15 +466,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
         return oimg
 
-    def otruth_pred(filename,image_idx):
-         #imageid = "satImage_%.3d" % image_idx
-        fname = "test_"+str(image_idx)
-        image_filename = filename + fname+"/"+fname + ".png"
-        img = mpimg.imread(image_filename)
-        img_prediction = get_prediction(img)
-        oimg = make_img_overlay(img, img_prediction)
-        return oimg
-
 
     # We will replicate the model structure for the training subgraph, as well
     # as the evaluation subgraphs, while sharing the trainable parameters.
@@ -509,16 +475,16 @@ def main(argv=None):  # pylint: disable=unused-argument
         # the same size as the input). Note that {strides} is a 4D array whose
         # shape matches the data layout: [image index, y, x, depth].
         data = tf.cast(data, dtype=tf.float32)
-        conv = tf.nn.conv2d(data,
+        conv1 = tf.nn.conv2d(data,
                             conv1_weights,
                             strides=[1, 1, 1, 1], #changed to stride=4
                             padding='SAME')
         # Bias and rectified linear non-linearity.
-        relu = tf.nn.relu(tf.nn.bias_add(conv, conv1_biases))
+        relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_biases))
       
         # Max pooling. The kernel size spec {ksize} also follows the layout of
         # the data. Here we have a pooling window of 2, and a stride of 2.
-        pool1 = tf.nn.max_pool(relu,
+        pool1 = tf.nn.max_pool(relu1,
                               ksize=[1, 2, 2, 1],
                               strides=[1, 2, 2, 1],
                               padding='SAME')
@@ -560,9 +526,8 @@ def main(argv=None):  # pylint: disable=unused-argument
                                 padding='SAME')
         
 
-       
         if train:
-            print("relu1: "+str(relu.get_shape()))
+            print("relu1: "+str(relu1.get_shape()))
             print("Pool1: "+str(pool1.get_shape()))
             print("relu2: "+str(relu2.get_shape()))
             print("pool2: "+str(pool2.get_shape()))
@@ -580,22 +545,24 @@ def main(argv=None):  # pylint: disable=unused-argument
         # Fully connected layer. Note that the '+' operation automatically
         # broadcasts the biases.
         
-        #hidden1 = tf.layers.dense(inputs = reshape,units=1024,activation = tf.nn.relu)
         hidden1 = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
+
+        hidden2 = tf.nn.relu(tf.matmul(hidden1,fc2_weights)+fc2_biases)
         
-        #hidden2 = tf.nn.relu(tf.matmul(hidden1,fc2_weights) + fc2_biases)
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.
         if train:
-            hidden = tf.nn.dropout(hidden1, 0.9, seed=SEED)
+            hidden = tf.nn.dropout(hidden1, 0.8, seed=SEED)
+            hidden2 = tf.nn.dropout(hidden2,0.8,seed=SEED)
 
-        out = tf.matmul(hidden1, fc2_weights) + fc2_biases
-        #out = tf.layers.dense(inputs = hidden1, units=2)
-        if train == True:
+        out = tf.matmul(hidden2, fc3_weights) + fc3_biases
+
+
+        if train == True and LOGGING:
             summary_id = '_0'
             s_data = get_image_summary(data)
             filter_summary0 = tf.summary.image('summary_data' + summary_id, s_data)
-            s_conv = get_image_summary(conv)
+            s_conv = get_image_summary(conv2)
             filter_summary2 = tf.summary.image('summary_conv' + summary_id, s_conv)
             s_pool1 = get_image_summary(pool1)
             filter_summary3 = tf.summary.image('summary_pool' + summary_id, s_pool1)
@@ -621,10 +588,10 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, 
                     conv3_weights, conv3_biases, conv4_weights, conv4_biases, 
-                    fc1_weights, fc1_biases, fc2_weights, fc2_biases]
+                    fc1_weights, fc1_biases, fc2_weights, fc2_biases, fc3_weights, fc3_biases]
     all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 
                     'conv3_weights','conv3_biases', 'conv4_weights','conv4_biases',
-                    'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases']
+                    'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases', 'fc3_weights','fc3_biases']
     all_grads_node = tf.gradients(loss, all_params_node)
     all_grad_norms_node = []
     for i in range(0, len(all_grads_node)):
@@ -635,7 +602,8 @@ def main(argv=None):  # pylint: disable=unused-argument
     # L2 regularization for the fully connected parameters.
 
     regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases) +
-                    tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases))
+                    tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases) +
+                    tf.nn.l2_loss(fc3_weights) + tf.nn.l2_loss(fc3_biases))
     # Add the regularization term to the loss.
     loss += 5e-4 * regularizers
 
@@ -652,17 +620,12 @@ def main(argv=None):  # pylint: disable=unused-argument
     #learning_rate = 0.01
     tf.summary.scalar('learning_rate', learning_rate)
     
-    # Use simple momentum for the optimization.
-    #TODO Change optimizer
-
-    #AdaGrad
-    #optimizer = tf.train.AdagradOptimizer(learning_rate).minimize(loss,global_step=batch)
     #Momentum
     #optimizer = tf.train.MomentumOptimizer(learning_rate,
     #                                       momentum=0.2).minimize(loss,
     #                                                     global_step=batch)
     
-    #AdamOptimizer - adaptative momentum
+    # AdamOptimizer - adaptative momentum
     # learning_rate: 1e-4 is very often used. ADAM chooses itsself a learning rate, 
     #               so tf.train.exponential_decay might not be a good idea
     # epsilon: 0.1 as recommended for imagenet
@@ -678,6 +641,19 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     init_op = tf.global_variables_initializer()
 
+    total_parameters = 0
+    for variable in tf.trainable_variables():
+        # shape is an array of tf.Dimension
+        shape = variable.get_shape()
+        variable_parametes = 1
+        for dim in shape:
+            variable_parametes *= dim.value
+        total_parameters += variable_parametes
+    print("Number of variables in model: "+str(total_parameters))
+
+
+    img_prediction = None
+    #tf.get_default_graph().finalize()
     # Create a local session to run this computation.
     with tf.Session() as s:
 
@@ -730,11 +706,11 @@ def main(argv=None):  # pylint: disable=unused-argument
                 saver.restore(s, FLAGS.train_dir + "/model.ckpt")
 
 
-
-            # Build the summary operation based on the TF collection of Summaries.
-            summary_op = tf.summary.merge_all()
-            summary_writer = tf.summary.FileWriter(FLAGS.train_dir,
-                                                    graph=s.graph)
+            if LOGGING:
+                # Build the summary operation based on the TF collection of Summaries.
+                summary_op = tf.summary.merge_all()
+                summary_writer = tf.summary.FileWriter(FLAGS.train_dir,
+                                                        graph=s.graph)
             
             # Loop through training steps.
 
@@ -781,14 +757,17 @@ def main(argv=None):  # pylint: disable=unused-argument
 
                     if step % RECORDING_STEP == 0:
 
-                        summary_str, _, l, lr, predictions = s.run(
+                        if LOGGING:
+                            summary_str, _, l, lr, predictions = s.run(
                             [summary_op, optimizer, loss, learning_rate, train_prediction],
                             feed_dict=feed_dict)
-                        #summary_str = s.run(summary_op, feed_dict=feed_dict)
-                        summary_writer.add_summary(summary_str, step)
-                        summary_writer.flush()
+                            summary_writer.add_summary(summary_str, step)
+                            summary_writer.flush()
+                        else:
+                            _, l, lr, predictions = s.run(
+                                [ optimizer, loss, learning_rate, train_prediction],
+                                feed_dict=feed_dict)
 
-                        # print_predictions(predictions, batch_labels)
 
                         print ('Epoch %.2f' % (iepoch))
                         print ('Minibatch loss: %.3f, learning rate: %.6f' % (l, lr))
