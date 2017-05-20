@@ -1,7 +1,3 @@
-"""
-Baseline for CIL project on road segmentation.
-This simple baseline consits of a CNN with two convolutional+pooling layers with a soft-max loss
-"""
 import gc
 import gzip
 import os
@@ -21,8 +17,8 @@ NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
 
-VALIDATION_SIZE = 5  # Size of the validation set.
-SEED = 66478  # Set to None for random seed.
+VALIDATION_SIZE = 10  # Size of the validation set.
+SEED = None  # Set to None for random seed.
 #TODO change batch size
 BATCH_SIZE = 32 # 64
 #TODO change epoch number
@@ -31,39 +27,39 @@ RESTORE_MODEL = False # If True, restore existing model instead of training a ne
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
-MODE = 'predict' # 'train' or 'predict'
-STARTING_ID = 1 # 21, 41...
-TRAINING_SIZE = 10
+MODE = 'train' # 'train' or 'predict'
+STARTING_ID = 101 # 21, 41...
+TRAINING_SIZE = 50
 
+init_type = 'xavier'
 
+TEST_START_ID = 1 
+TEST_SIZE = 50
 
-TEST_START_ID = 1
-TEST_SIZE = 3
-
-
+LOGGING = False
+ 
 
 
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
-#TODO change patch size
 
 CONTEXT_ADDITIVE_FACTOR = 19 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
 IMG_PATCH_SIZE = 12 #should be at least dividor of 608
 CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
 
-
+ 
 if CONTEXT_PATCH == 40:
     FC1_WIDTH = 576
 elif CONTEXT_PATCH == 64:
     FC1_WIDTH = 1024
 elif CONTEXT_PATCH == 32:
-    FC1_WIDTH = 512
+    FC1_WIDTH = 2048
 elif CONTEXT_PATCH == 50:
-    FC1_WIDTH = 1024    
+    FC1_WIDTH = 3136    
 else:
-    FC1_WIDTH = 42 # TODO 
+    FC1_WIDTH = 3136 # TODO 
     print('Please set FC1_WIDTH!!')
 
 
@@ -154,55 +150,6 @@ def img_crop_context(im, w, h,context_factor):
             list_patches.append(im_patch)
 
     return list_patches
-
-# OLD VERSION!!! use img_crop_context() instead
-# def _img_crop_context_depr(im, w, h,context_factor):
-#     list_patches = []
-#     imgwidth = im.shape[0]
-#     imgheight = im.shape[1]
-#     is_2d = len(im.shape) < 3
-#     for i in range(0,imgheight,h):
-#         for j in range(0,imgwidth,w):
-#             if is_2d:
-#                 #im_patch = im[j:j+w, i:i+h]
-#                 im_patch = numpy.zeros((w+2*context_factor,h+2*context_factor))
-#                 iterx = 0
-#                 itery = 0
-#                 for x in range(j - context_factor,j+w+context_factor):
-#                     itery = 0
-#                     for y in range(i - context_factor,i+h+context_factor):
-#                         if x >= 0 and y >= 0 and x < imgwidth and y < imgheight:
-#                             im_patch[iterx,itery] = im[x,y]
-                        
-#                         itery = itery + 1
-#                     iterx = iterx + 1
-#                 #print("INDEX: ["+str(j-context_factor)+":"+str(j+w+context_factor)+", "+str(i-context_factor)+":"+str(i+h+context_factor)+"]")
-#                 #im_patch = im[(j-context_factor):(j+w+context_factor), (i-context_factor):(i+h+context_factor)]
-#             else:
-#                 #im_patch = im[j:j+w, i:i+h, :]
-#                 #print("INDEX: ["+str(j-context_factor)+":"+str(j+w+context_factor)+", "+str(i-context_factor)+":"+str(i+h+context_factor)+"]")
-#                 #im_patch = im[(j-context_factor):(j+w+context_factor), (i-context_factor):(i+h+context_factor),:]
-#                 im_patch = numpy.zeros((w+2*context_factor,h+2*context_factor,3))
-#                 #print(im_patch.shape)
-#                 iterx = 0
-#                 itery = 0
-#                 for x in range(j - context_factor,j+w+context_factor):
-#                     itery = 0
-#                     for y in range(i - context_factor,i+h+context_factor):
-#                         #print(str(x) + " "+str(y)+" and "+str(iterx)+" " + str(itery))
-#                         if x >= 0 and y >= 0 and x < imgwidth and y < imgheight:
-#                             im_patch[iterx,itery,:] = im[x,y,:]
-                        
-#                         itery = itery + 1
-#                     iterx = iterx + 1
-#                 # img_data = Image.fromarray(numpy.uint8(im_patch*255))
-#                 # plt.imshow(img_data)
-#                 # plt.show()
-#             #print(im_patch)
-#             list_patches.append(im_patch)
-#     #print(list_patches[250][:,:,0])
-#     print('list_patches[0].shape: ', list_patches[0].shape)
-#     return list_patches
 
 def extract_data(filename, num_images, starting_id, context_factor):
     """Extract the images into a 4D tensor [image index, y, x, channels].
@@ -365,12 +312,9 @@ def main(argv=None):  # pylint: disable=unused-argument
     train_data = extract_data(train_data_filename, TRAINING_SIZE, STARTING_ID, CONTEXT_ADDITIVE_FACTOR)
     train_labels = extract_labels(train_labels_filename, TRAINING_SIZE, STARTING_ID, CONTEXT_ADDITIVE_FACTOR)
 
-    print(type(train_data))
-    print(train_data.shape)
-    print(train_data)
-    print(type(train_labels))
-    print(train_labels.shape)
-    print(train_labels)
+
+    validation_data = extract_data(train_data_filename,VALIDATION_SIZE,200-VALIDATION_SIZE,CONTEXT_ADDITIVE_FACTOR)
+    validation_labels = extract_labels(train_labels_filename,VALIDATION_SIZE,200-VALIDATION_SIZE,CONTEXT_ADDITIVE_FACTOR)
     print("Train data shape: ", train_data.shape)
     print("Train labels shape: ", train_labels.shape)
     
@@ -420,7 +364,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     # initial value which will be assigned when when we call:
     # {tf.initialize_all_variables().run()}
 
-    init_type = 'xavier'
+
     if init_type=='normal':
         conv1_weights = tf.Variable(
             tf.truncated_normal([5, 5, NUM_CHANNELS, 16],  # 5x5 filter, depth 32.
@@ -435,17 +379,17 @@ def main(argv=None):  # pylint: disable=unused-argument
         conv2_biases = tf.Variable(tf.zeros([32]), name='conv2_biases')
 
         conv3_weights = tf.Variable(
-            tf.truncated_normal([3, 3, 32, 32],
+            tf.truncated_normal([3, 3, 32, 48],
                                 stddev=0.1,
                                 seed=SEED), name='conv3_weights')
-        conv3_biases = tf.Variable(tf.constant(0.1, shape=[32]), name='conv3_biases')
+        conv3_biases = tf.Variable(tf.constant(0.01, shape=[48]), name='conv3_biases')
 
         conv4_weights = tf.Variable(
-            tf.truncated_normal([3,3,32,64],
+            tf.truncated_normal([3,3,48,64],
                                 stddev=0.1,
                                 seed=SEED), name='conv4_weights')
-        conv4_biases = tf.Variable(tf.constant(0.1,shape=[64]), name='conv4_biases')
-       
+        conv4_biases = tf.Variable(tf.constant(0.01,shape=[64]), name='conv4_biases')
+        
 
 
         fc1_weights = tf.Variable(  # fully connected, depth 512.
@@ -453,42 +397,52 @@ def main(argv=None):  # pylint: disable=unused-argument
             tf.truncated_normal([FC1_WIDTH, 64],
                                 stddev=0.1,
                                 seed=SEED), name='fc1_weights')
-        fc1_biases = tf.Variable(tf.constant(0.1, shape=[64]), name='fc1_biases')
+        fc1_biases = tf.Variable(tf.constant(0.01, shape=[64]), name='fc1_biases')
 
         fc2_weights = tf.Variable(  # fully connected, depth 64.
-            tf.truncated_normal([64, NUM_LABELS],
+            tf.truncated_normal([64, 32],
                                 stddev=0.1,
                                 seed=SEED), name='fc2_weights')
-        fc2_biases  = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]), name='fc2_biases')
+        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[32]), name='fc2_biases')
+
+        fc3_weights = tf.Variable(  # fully connected, depth 64.
+            tf.truncated_normal([32, NUM_LABELS],
+                                stddev=0.1,
+                                seed=SEED), name='fc3_weights')
+        fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
 
 
-
-    elif init_type == 'xavier':
+ 
+    elif init_type == 'xavier': 
         conv1_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv1_weights = tf.Variable( conv1_weights_init(shape=[5, 5, NUM_CHANNELS, 16]), name='conv1_weights')
-        conv1_biases = tf.Variable(tf.constant(0.01, shape=[16]), name='conv1_biases')
+        conv1_weights = tf.Variable( conv1_weights_init(shape=[10, 10, NUM_CHANNELS, 16]), name='conv1_weights')
+        conv1_biases = tf.Variable(tf.constant(0.001, shape=[16]), name='conv1_biases')
 
         conv2_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv2_weights = tf.Variable( conv2_weights_init(shape=[3, 3, 16, 32]), name='conv2_weights')
-        conv2_biases = tf.Variable(tf.constant(0.01, shape=[32]), name='conv2_biases')
+        conv2_weights = tf.Variable( conv2_weights_init(shape=[5, 5, 16, 32]), name='conv2_weights')
+        conv2_biases = tf.Variable(tf.constant(0.001, shape=[32]), name='conv2_biases')
 
         conv3_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv3_weights = tf.Variable( conv3_weights_init(shape=[3, 3, 32, 32]), name='conv3_weights')
-        conv3_biases = tf.Variable(tf.constant(0.1, shape=[32]), name='conv3_biases')
+        conv3_weights = tf.Variable( conv3_weights_init(shape=[5, 5, 32, 48]), name='conv3_weights')
+        conv3_biases = tf.Variable(tf.constant(0.01, shape=[48]), name='conv3_biases')
 
         conv4_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv4_weights = tf.Variable( conv4_weights_init(shape=[3,3,32,64]), name='conv4_weights')
-        conv4_biases = tf.Variable(tf.constant(0.1,shape=[64]), name='conv4_biases')
+        conv4_weights = tf.Variable( conv4_weights_init(shape=[3,3,48,64]), name='conv4_weights')
+        conv4_biases = tf.Variable(tf.constant(0.01,shape=[64]), name='conv4_biases')
 
 
         fc1_weights_init = tf.contrib.layers.xavier_initializer()
         fc1_weights = tf.Variable(  fc1_weights_init(shape=[FC1_WIDTH, 64]), name='fc1_weights')
-        fc1_biases = tf.Variable(tf.constant(0.1, shape=[64]), name='fc1_biases')
+        fc1_biases = tf.Variable(tf.constant(0.01, shape=[64]), name='fc1_biases')
 
         fc2_weights_init = tf.contrib.layers.xavier_initializer()
-        fc2_weights = tf.Variable( fc2_weights_init(shape=[64, NUM_LABELS]), name='fc2_weights')
-        fc2_biases  = tf.Variable(tf.constant(0.1, shape=[NUM_LABELS]), name='fc2_biases')
-    else:
+        fc2_weights = tf.Variable( fc2_weights_init(shape=[64, 32]), name='fc2_weights')
+        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[32]), name='fc_biases')
+ 
+        fc3_weights_init = tf.contrib.layers.xavier_initializer()
+        fc3_weights = tf.Variable( fc2_weights_init(shape=[32, NUM_LABELS]), name='fc3_weights')
+        fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
+    else: 
         print('You have to specify some init_type')
        
 
@@ -631,12 +585,8 @@ def main(argv=None):  # pylint: disable=unused-argument
                             padding='SAME')
         relu3 = tf.nn.relu(tf.nn.bias_add(conv3,conv3_biases))
         
-        pool3 = tf.nn.max_pool(relu3,
-                                ksize=[1,2,2,1],
-                                strides = [1,2,2,1],
-                                padding='SAME')
         
-        conv4 = tf.nn.conv2d(pool3,
+        conv4 = tf.nn.conv2d(relu3,
                             conv4_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
@@ -655,7 +605,6 @@ def main(argv=None):  # pylint: disable=unused-argument
             print("relu2: "+str(relu2.get_shape()))
             print("pool2: "+str(pool2.get_shape()))
             print("relu3: "+str(relu3.get_shape()))
-            print("pool3: "+str(pool3.get_shape()))
             print("relu4: "+str(relu4.get_shape()))
             print("pool4: "+str(pool4.get_shape()))
 
@@ -670,16 +619,19 @@ def main(argv=None):  # pylint: disable=unused-argument
         
         #hidden1 = tf.layers.dense(inputs = reshape,units=1024,activation = tf.nn.relu)
         hidden1 = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
+
+        hidden2 = tf.nn.relu(tf.matmul(hidden1,fc2_weights)+fc2_biases)
         
         #hidden2 = tf.nn.relu(tf.matmul(hidden1,fc2_weights) + fc2_biases)
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.
         if train:
-            hidden = tf.nn.dropout(hidden1, 0.9, seed=SEED)
+            hidden = tf.nn.dropout(hidden1, 0.5, seed=SEED)
+            hidden2 = tf.nn.dropout(hidden2,0.5,seed=SEED)
 
-        out = tf.matmul(hidden1, fc2_weights) + fc2_biases
+        out = tf.matmul(hidden2, fc3_weights) + fc3_biases
         #out = tf.layers.dense(inputs = hidden1, units=2)
-        if train == True:
+        if LOGGING == True:
             summary_id = '_0'
             s_data = get_image_summary(data)
             filter_summary0 = tf.summary.image('summary_data' + summary_id, s_data)
@@ -693,8 +645,6 @@ def main(argv=None):  # pylint: disable=unused-argument
             filter_summary5 = tf.summary.image('summary_pool' + summary_id, s_pool2)
             s_conv3 = get_image_summary(conv3)
             filter_summary6 = tf.summary.image('summary_conv3'+summary_id,s_conv3)
-            s_pool3 = get_image_summary(pool1)
-            filter_summary7 = tf.summary.image('summary_pool' + summary_id, s_pool3)
             s_conv4 = get_image_summary(conv4)
             filter_summary8 = tf.summary.image('summary_conv4'+summary_id,s_conv4)
 
@@ -709,10 +659,10 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, 
                     conv3_weights, conv3_biases, conv4_weights, conv4_biases, 
-                    fc1_weights, fc1_biases, fc2_weights, fc2_biases]
+                    fc1_weights, fc1_biases, fc2_weights, fc2_biases,fc3_weights,fc3_biases]
     all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 
                     'conv3_weights','conv3_biases', 'conv4_weights','conv4_biases',
-                    'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases']
+                    'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases','fc3_weights','fc3_biases']
     all_grads_node = tf.gradients(loss, all_params_node)
     all_grad_norms_node = []
     for i in range(0, len(all_grads_node)):
@@ -721,4 +671,183 @@ def main(argv=None):  # pylint: disable=unused-argument
         tf.summary.scalar(all_params_names[i], norm_grad_i)
     
     # L2 regularization for the fully connected parameters.
-    regula
+    regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases) +
+                    tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases) + 
+                    tf.nn.l2_loss(fc3_weights) + tf.nn.l2_loss(fc3_biases))
+    # Add the regularization term to the loss.
+    loss += 5e-5 * regularizers
+
+    # Optimizer: set up a variable that's incremented once per batch and
+    # controls the learning rate decay.
+    batch = tf.Variable(0, name='batch')
+    # Decay once per epoch, using an exponential schedule starting at 0.01.
+    learning_rate = tf.train.exponential_decay(
+        0.01,                # Base learning rate.
+        batch * BATCH_SIZE,  # Current index into the dataset.
+        train_size,          # Decay step.
+        0.95,                # Decay rate.
+        staircase=True)
+    #learning_rate = 0.01
+    tf.summary.scalar('learning_rate', learning_rate)
+    
+    
+    #AdamOptimizer - adaptative momentum
+    # learning_rate: 1e-4 is very often used. ADAM chooses itsself a learning rate, 
+    #               so tf.train.exponential_decay might not be a good idea
+    # epsilon: 0.1 as recommended for imagenet
+    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, 
+            beta1= 0.9, beta2 = 0.999,epsilon=0.1).minimize(loss,global_step=batch)
+
+
+    # Predictions for the minibatch, validation set and test set.
+    train_prediction = tf.nn.softmax(logits)
+    # We'll compute them only once in a while by calling their {eval()} method.
+    #train_all_prediction = tf.nn.softmax(model(train_all_data_node))
+
+    # Add ops to save and restore all the variables.
+    saver = tf.train.Saver()
+
+    init_op = tf.global_variables_initializer()
+
+    total_parameters = 0
+    for variable in tf.trainable_variables():
+        # shape is an array of tf.Dimension
+        shape = variable.get_shape()
+        variable_parametes = 1
+        for dim in shape:
+            variable_parametes *= dim.value
+        total_parameters += variable_parametes
+    print("Number of variables in model: "+str(total_parameters))
+
+    data_node_validation = tf.constant(validation_data)
+    output_validation = tf.nn.softmax(model(data_node_validation))
+    # Create a local session to run this computation.
+    tf.get_default_graph().finalize()
+    with tf.Session() as s:
+
+        if MODE == 'predict':
+            # Restore variables from disk.
+            saver.restore(s, FLAGS.train_dir + "/model.ckpt")
+            print("Model restored.")
+
+
+            #plotNNFilter(conv1_weights)
+            print ("Running prediction on training set")
+            prediction_training_dir = "predictions_training/"
+            real_prediction = "predictions_test/"
+            if not os.path.isdir(prediction_training_dir):
+                os.mkdir(prediction_training_dir)
+            if not os.path.isdir(real_prediction):
+                os.mkdir(real_prediction)
+            if not os.path.isdir(real_prediction+"result/"):
+                os.mkdir(real_prediction+"result/")
+            for i in range(TEST_START_ID, TEST_START_ID+TEST_SIZE):
+                print("Prediction for img: "+str(i))
+
+                # read image
+                fname = "test_"+str(i)
+                image_filename = test_set_dir + fname+"/"+fname + ".png"
+                img = mpimg.imread(image_filename)
+                # predict label
+                img_prediction = get_prediction(img)
+                # overlay and save
+                oimg = make_img_overlay(img, img_prediction)
+                oimg.save(real_prediction + "overlay_" + str(i) + ".png")
+                oimg.close()
+                # save the mask separately
+                
+                #need to multiply by 255 so its a real white pixel
+                imgdata = Image.fromarray(255*img_prediction)
+                imgdata = imgdata.convert('RGB')
+                imgdata.save(real_prediction+"result/"+"prediction_"+str(i)+".png")
+                imgdata.close()
+                gc.collect()
+
+        elif MODE == 'train':
+
+            if STARTING_ID == 1:
+                # we have no model yet, so lets init all variables
+                s.run(init_op)
+                print ('Initialized!')
+            else:
+                # we have the model already saved, so we dont need to init, but restore the existing model
+                saver.restore(s, FLAGS.train_dir + "/model.ckpt")
+
+
+
+            # Build the summary operation based on the TF collection of Summaries.
+            if LOGGING:
+                summary_op = tf.summary.merge_all()
+                summary_writer = tf.summary.FileWriter(FLAGS.train_dir,
+                                                    graph=s.graph)
+            
+            # Loop through training steps.
+            print ('Total number of iterations = ' + str(int(num_epochs * train_size / BATCH_SIZE)))
+            training_indices = range(train_size)
+
+            for iepoch in range(num_epochs):
+
+                # Permute training indices
+                perm_indices = numpy.random.permutation(training_indices)
+                for step in range (int(train_size / BATCH_SIZE)):
+
+                    offset = (step * BATCH_SIZE) % (train_size - BATCH_SIZE)
+                    batch_indices = perm_indices[offset:(offset + BATCH_SIZE)]
+
+                    # Compute the offset of the current minibatch in the data.
+                    # Note that we could use better randomization across epochs.
+                    batch_data = train_data[batch_indices, :, :, :]
+                    batch_labels = train_labels[batch_indices]
+                    # This dictionary maps the batch data (as a numpy array) to the
+                    # node in the graph is should be fed to.
+                    feed_dict = {train_data_node: batch_data,
+                                 train_labels_node: batch_labels}
+
+                    if step % RECORDING_STEP == 0:
+                        if LOGGING:
+                            summary_str, _, l, lr, predictions = s.run(
+                            [summary_op, optimizer, loss, learning_rate, train_prediction],
+                            feed_dict=feed_dict)
+                            summary_writer.add_summary(summary_str, step)
+                            summary_writer.flush()
+                        else:
+
+                            _, l, lr, predictions = s.run(
+                                [ optimizer, loss, learning_rate, train_prediction],
+                                feed_dict=feed_dict)
+                        #summary_str = s.run(summary_op, feed_dict=feed_dict)
+                        #summary_writer.add_summary(summary_str, step)
+                        #summary_writer.flush()
+
+                        # print_predictions(predictions, batch_labels)
+
+
+                        
+                        print ('Epoch %.2f' % (iepoch))
+                        print ('Minibatch loss: %.3f, learning rate: %.6f' % (l, lr))
+                        print ('Minibatch error: %.1f%%' % error_rate(predictions,
+                                                                     batch_labels))
+
+                        sys.stdout.flush()
+                    else:
+                        # Run the graph and fetch some of the nodes.
+                        _, l, lr, predictions = s.run(
+                            [optimizer, loss, learning_rate, train_prediction],
+                            feed_dict=feed_dict)
+
+                # Save the variables to disk.
+                save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
+                print("Model saved in file: %s" % save_path)
+
+            print("VALIDATION:")            
+            output_prediction_validation = s.run(output_validation)
+            print("ERROR RATE: "+str(error_rate(output_prediction_validation,validation_labels))+"%")  
+
+
+
+         
+
+
+if __name__ == '__main__':
+
+    tf.app.run()
