@@ -17,7 +17,7 @@ NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2
 
-VALIDATION_SIZE = 10  # Size of the validation set.
+VALIDATION_SIZE = 3  # Size of the validation set.
 SEED = None  # Set to None for random seed.
 #TODO change batch size
 BATCH_SIZE = 32 # 64
@@ -27,7 +27,7 @@ RESTORE_MODEL = False # If True, restore existing model instead of training a ne
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
-MODE = 'train' # 'train' or 'predict'
+MODE = 'predict' # 'train' or 'predict'
 STARTING_ID = 101 # 21, 41...
 TRAINING_SIZE = 50
 
@@ -719,10 +719,8 @@ def main(argv=None):  # pylint: disable=unused-argument
         total_parameters += variable_parametes
     print("Number of variables in model: "+str(total_parameters))
 
-    data_node_validation = tf.constant(validation_data)
-    output_validation = tf.nn.softmax(model(data_node_validation))
     # Create a local session to run this computation.
-    tf.get_default_graph().finalize()
+    #tf.get_default_graph().finalize()
     with tf.Session() as s:
 
         if MODE == 'predict':
@@ -820,9 +818,8 @@ def main(argv=None):  # pylint: disable=unused-argument
                         #summary_writer.flush()
 
                         # print_predictions(predictions, batch_labels)
-
-
                         
+                        print("ERROR RATE: "+str(error_rate(output_prediction_validation,validation_labels))+"%")  
                         print ('Epoch %.2f' % (iepoch))
                         print ('Minibatch loss: %.3f, learning rate: %.6f' % (l, lr))
                         print ('Minibatch error: %.1f%%' % error_rate(predictions,
@@ -839,9 +836,11 @@ def main(argv=None):  # pylint: disable=unused-argument
                 save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
                 print("Model saved in file: %s" % save_path)
 
+            data_node_validation = tf.constant(validation_data)
+            output_validation = tf.nn.softmax(model(data_node_validation))
             print("VALIDATION:")            
             output_prediction_validation = s.run(output_validation)
-            print("ERROR RATE: "+str(error_rate(output_prediction_validation,validation_labels))+"%")  
+            
 
 
 
