@@ -33,6 +33,7 @@ PIXEL_DEPTH = 255
 NEIGHBOOR_TO_CONSIDER = 8
 BALCK_TH = int(0.75 * NEIGHBOOR_TO_CONSIDER)
 WHITE_TH = int(0.25 * NEIGHBOOR_TO_CONSIDER)
+ 
 
 def remove_filtering_neighbors(img,black_threshold, block_size = 16):
     #img is b&w array with 0 or 1
@@ -43,10 +44,13 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
 
     numblockheight = int(imgheight/block_size)
 
-    for i in range(0,numblockwidth-1):
-        for j in range(0, numblockheight-1):
+    for i in range(1,numblockwidth-2):
+        for j in range(1, numblockheight-2):
             pixel_i = i*block_size
             pixel_j = j*block_size
+
+
+
 
             if img[pixel_i,pixel_j] == 0: #if patch is black
                 #if not surrounded by 3 cut it
@@ -66,6 +70,7 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
                 sum_val = np.sum(neighbors)
                 if(sum_val > black_threshold):
                     #repaint block
+                    print('  Block repainted to BLACK!')
                     for xx in range(0,block_size):
                         for yy in range(0,block_size):
                             img[pixel_i+xx,pixel_j+yy] = 1.0
@@ -86,15 +91,16 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
 
 
                 sum_val = np.sum(neighbors)
-                wh_threshold = NEIGHBOOR_TO_CONSIDER-black_threshold
+                wh_threshold = NEIGHBOOR_TO_CONSIDER-black_threshold+1
                 if(sum_val < wh_threshold):
-                    #repaint block
+                    print('  Block repainted to WHITE!')
                     for xx in range(0,block_size):
                         for yy in range(0,block_size):
                             img[pixel_i+xx,pixel_j+yy] = 0.0
 
 
     return img
+
 
 def rgb2gray(rgb):
     return np.dot(rgb[...,:3], [0.299, 0.587, 0.114])
@@ -154,8 +160,8 @@ def img_float_rescale(img):
 
 def main(argv=None):  # pylint: disable=unused-argument
 
-    data_dir = 'predictions_test/result_16_64/'
-    out_dir = 'predictions_test/result_16_64_smooth_bin/'
+    data_dir = 'predictions_test/result/'
+    out_dir = 'predictions_test/result_smooth_bin/'
 
     # Extract it into np arrays.
     
@@ -180,7 +186,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     corner = -1
     edge = -1
     center = 2
-    filter_size = 17
+    filter_size = 9
     filter_mat = np.ones((filter_size,filter_size))
 
     conv_filter1 = tf.constant( filter_mat, tf.float32)
@@ -244,7 +250,8 @@ def main(argv=None):  # pylint: disable=unused-argument
                 res = img_float_to_uint8(res)
                 #print(res)
                 res = res/255
-                res_igor = binarize(res, 16, 0.4)
+                res_igor = binarize(res, 16, 0.5)
+                res_igor = remove_filtering_neighbors(res_igor,7,block_size=16)
 
                 # img_tv = 1-img
                 # tv_denoise = denoise_tv_chambolle(img_tv, weight=10)
@@ -261,6 +268,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
                 im_save(out_dir+ff, res_igor)
                 print('File %s saved!' %(out_dir+ff))
+                print()
 
             else:
                 print ('File ' + full_path + ' does not exist')
