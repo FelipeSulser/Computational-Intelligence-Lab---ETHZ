@@ -1,13 +1,3 @@
-# Nonlinear SVM Example
-#----------------------------------
-#
-# This function wll illustrate how to
-# implement the gaussian kernel on
-# the iris dataset.
-#
-# Gaussian Kernel:
-# K(x1, x2) = exp(-gamma * abs(x1 - x2)^2)
-
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
@@ -20,7 +10,9 @@ from sklearn import linear_model
 import pickle
 from sklearn.externals import joblib
 import os
-
+from sklearn.pipeline import Pipeline
+from sklearn.grid_search import GridSearchCV
+from sklearn.metrics import log_loss
 #ops.reset_default_graph()
 
 TRAIN = True
@@ -42,30 +34,51 @@ if TRAIN:
         #imageid = "prediction_"+str(i)
         image_filename = train_img_path +imageid+ ".png"
         img = mpimg.imread(image_filename)
-
+        #print(img)
         #2D matrix between 0,1
         num_patches = int(img.shape[0]/PATCH_SIZE)
         for i in range(CONTEXT_SIZE,num_patches-CONTEXT_SIZE):
             for j in range(CONTEXT_SIZE, num_patches-CONTEXT_SIZE):
                 curr_x = img[(i*PATCH_SIZE - CONTEXT_SIZE*PATCH_SIZE):(i*PATCH_SIZE+CONTEXT_SIZE*PATCH_SIZE),(j*PATCH_SIZE-CONTEXT_SIZE*PATCH_SIZE):(j*PATCH_SIZE+CONTEXT_SIZE*PATCH_SIZE)]
-                max_val = max(max_val,(i*PATCH_SIZE+CONTEXT_SIZE*PATCH_SIZE)-(i*PATCH_SIZE - CONTEXT_SIZE*PATCH_SIZE))
-                flattened = curr_x.flatten()
-                flattened = flattened/(np.linalg.norm(flattened)+1)
-                train_x.append(flattened)
-                meanval = np.mean(img[i*PATCH_SIZE:i*PATCH_SIZE+PATCH_SIZE,j*PATCH_SIZE:j*PATCH_SIZE+PATCH_SIZE])
-                if meanval > 0.5:
+                curr_patch = img[i*PATCH_SIZE:i*PATCH_SIZE+PATCH_SIZE,j*PATCH_SIZE:j*PATCH_SIZE+PATCH_SIZE]
+                #print(np.mean(curr_patch)) 
+                if np.mean(curr_patch) > 0.25:
                     real_y.append(1)
                 else:
                     real_y.append(0)
+                #print("CURR_PATCH")
+                #print(curr_patch)
+                #max_val = max(max_val,(i*PATCH_SIZE+CONTEXT_SIZE*PATCH_SIZE)-(i*PATCH_SIZE - CONTEXT_SIZE*PATCH_SIZE))
+                flattened = curr_x.flatten()
+                train_x.append(flattened)
+                
 
 
 
+    train_x = np.asarray(train_x)
+    real_y = np.asarray(real_y)
+    D = train_x.shape[1]
     print("Finished loading images")
     print("Computing SVM with RBF kernel")
-
-    clf = svm.SVC(C=1.0,kernel='rbf')
-    clf.fit(train_x,real_y)
-    joblib.dump(clf, 'svcmodel.pkl') 
+    clf = svm.SVC(kernel='rbf',probability=True,class_weight='balanced')
+    #pipe = Pipeline([
+    #    ('est',clf)
+    #    ])
+    #c_params = [0.01,0.1,1]
+    #gammas = [0.1/D,1/D, 10/D]
+    #params = dict(
+    #   est=[clf],
+    #   est__C = c_params,
+    #   est__gamma = gammas
+        
+    #    )
+    gammas = np.array([1,0.1,0.01,0.001,0.0001])
+    grid_dict = dict(gamma=gammas)
+    classifier = GridSearchCV(estimator = clf,param_grid=grid_dict)
+    classifier.fit(train_x,real_y)
+    print("BEST PARAMETERS")
+    print(classifier.best_params_)
+    joblib.dump(classifier, 'svcmodel.pkl') 
 else:
     clf = svm.SVC(C=1.0,kernel='rbf')
     clf = joblib.load('svcmodel.pkl')
