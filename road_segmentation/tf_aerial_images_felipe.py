@@ -15,7 +15,7 @@ import tensorflow.python.platform
 import numpy
 import tensorflow as tf
 from scipy import ndimage
-import math
+import math 
 
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
@@ -32,11 +32,13 @@ RECORDING_STEP = 1000
 DOWNSCALE = 1
 
 MODE = 'predict' # 'train' or 'predict'
+
 STARTING_ID = 151 # 21, 41...
 TRAINING_SIZE = 1
 
 TEST_START_ID = 41
 TEST_SIZE = 10
+
 
 
 
@@ -110,6 +112,7 @@ def img_crop_context(im, w, h,context_factor):
     imgwidth = padded_img.shape[1]
     
     #print('padded_img: ', padded_img.shape)
+
 
     for i in range(cf,imgheight-cf,h):
         for j in range(cf,imgwidth-cf,w):
@@ -296,7 +299,7 @@ def print_predictions(predictions, labels):
 
 # Convert array of labels to an image
 def label_to_img(imgwidth, imgheight, w, h, labels):
-    array_labels = numpy.zeros([imgwidth, imgheight])
+    array_labels = numpy.zeros([imgheight, imgwidth])
     idx = 0
     for i in range(0,imgheight,h):
         for j in range(0,imgwidth,w):
