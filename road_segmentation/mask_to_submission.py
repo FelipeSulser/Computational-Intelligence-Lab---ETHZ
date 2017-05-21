@@ -35,9 +35,11 @@ def masks_to_submission(submission_filename, *image_filenames):
         for fn in image_filenames[0:]:
             f.writelines('{}\n'.format(s) for s in mask_to_submission_strings(fn))
 
+    print('Submission saved in: ',submission_filename)
+
 
 if __name__ == '__main__':
-    submission_filename = '16_48_smooth_submission.csv'
+    submission_filename = '16_64_smooth_submission.csv'
     image_filenames = []
     for i in range(1, 51):
         image_filename = 'predictions_test/result_smooth_bin/prediction_' +  str(i) + '.png'

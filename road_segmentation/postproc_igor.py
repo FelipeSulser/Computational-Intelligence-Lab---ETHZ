@@ -1,31 +1,22 @@
-import gzip
+import math
 import os
-import sys
-import urllib
-import matplotlib.image as mpimg
-from scipy.misc import imsave as  im_save
-from PIL import Image
-
-import code
-
-import tensorflow.python.platform
 
 import numpy as np
 import tensorflow as tf
 
-
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
-import scipy as sp
+from scipy.misc import imsave as  im_save
 
-import scipy.misc
 
-from scipy import signal
-from scipy.signal import convolve2d
-from skimage.restoration import denoise_tv_chambolle
-from skimage import data, img_as_float, color, restoration
-from skimage.util import random_noise
+
+
+
+
+
+
+
 
 NUM_CHANNELS = 3
 PIXEL_DEPTH = 255
@@ -34,6 +25,9 @@ NEIGHBOOR_TO_CONSIDER = 8
 BALCK_TH = int(0.75 * NEIGHBOOR_TO_CONSIDER)
 WHITE_TH = int(0.25 * NEIGHBOOR_TO_CONSIDER)
  
+    
+IMG_SIZE = 608
+
 
 def remove_filtering_neighbors(img,black_threshold, block_size = 16):
     #img is b&w array with 0 or 1
@@ -153,6 +147,26 @@ def img_float_rescale(img):
     return rimg    
 
 
+def fill_rows_and_cols(img, block_size=16, missing_blocks=3):
+    row_sums = np.sum(img, axis=1)
+    col_sums = np.sum(img, axis=0)
+
+    n_blocks_per_rc = math.ceil(IMG_SIZE / block_size)
+    rc_threshold = IMG_SIZE - (missing_blocks+1) * block_size
+
+
+    for row, row_sum in enumerate(row_sums):
+        if row_sum > rc_threshold:
+            # number of road patches is bigger than the minimum
+            img[row,:] = 1
+
+    for col, col_sum in enumerate(col_sums):
+        if col_sum > rc_threshold:
+            # number of road patches is bigger than the minimum
+            img[:,col] = 1
+    
+    return img
+
 
 def main(argv=None):  # pylint: disable=unused-argument
 
@@ -167,7 +181,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     #train_data = extract_data(data_dir, IN_FILES)
 
     #print('train_data.shape: ', train_data.shape)
-    IMG_SIZE = 608
+    
 
     # This is where training samples and labels are fed to the graph.
     # These placeholder nodes will be fed all of training data using 
@@ -245,9 +259,10 @@ def main(argv=None):  # pylint: disable=unused-argument
                 res = img_float_to_uint8(res)
                 #print(res)
                 res = res/255
-                res_igor = binarize(res, 16, 0.5)
+                res_igor = binarize(res, 16, 0.4)
                 res_igor = remove_filtering_neighbors(res_igor,7,block_size=16)
 
+                res_igor = fill_rows_and_cols(res_igor, missing_blocks=3)
                 # img_tv = 1-img
                 # tv_denoise = denoise_tv_chambolle(img_tv, weight=10)
                 # tv_denoise_bw = binarize(tv_denoise,16,0.7)

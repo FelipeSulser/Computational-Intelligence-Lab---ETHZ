@@ -32,7 +32,7 @@ DOWNSCALE = 1
 
 MODE = 'predict' # 'train' or 'predict'
 
-STARTING_ID = 1 # 21, 41...
+STARTING_ID = 101 # 21, 41...
 TRAINING_SIZE = 3
 
 TEST_START_ID = 1
@@ -57,9 +57,9 @@ IMG_PATCH_SIZE = 16 #should be at least dividor of 608
 CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
 
 
-if CONTEXT_PATCH in [40, 48]:
+if CONTEXT_PATCH in range(40, 48+1):
     FC1_WIDTH = 576
-elif CONTEXT_PATCH in [64,50, 52]:
+elif CONTEXT_PATCH in range(50,64+1):
     FC1_WIDTH = 1024
 elif CONTEXT_PATCH == 32:
     FC1_WIDTH = 256  
@@ -264,8 +264,8 @@ def make_img_overlay(img, predicted_img):
 def main(argv=None):  # pylint: disable=unused-argument
 
     data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
-    train_data_filename = data_dir + 'images/'
-    train_labels_filename = data_dir + 'groundtruth/' 
+    train_data_filename = data_dir + 'images_shuffled/'
+    train_labels_filename = data_dir + 'groundtruth_shuffled/' 
     test_set_dir = (os.path.dirname(os.path.realpath(__file__)))+'/test_set_images/'
     # Extract it into numpy arrays.
 
