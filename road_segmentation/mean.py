@@ -119,20 +119,3 @@ mean_patch = np.mean(train_data, axis=0)
 print('MEAN: ',mean_patch.shape)
 save_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
 im_save(save_dir+'mean_patch_64.png', mean_patch)
-
-'''
-for i in range(train_data.shape[0]):
-    f, axarr = plt.subplots(1,2)
-    orig = img_float_to_uint8(train_data[i,:,:,:])
-    axarr[0].imshow(orig)
-
-    example_img = train_data[i,:,:,:] - mean_patch
-    #example_img = img_float_to_uint8(example_img)
-
-    
-    axarr[1].imshow(example_img)
-
-
-    plt.show()
-
-'''
