@@ -78,7 +78,7 @@ FLAGS = tf.app.flags.FLAGS
 # Extract patches from a given image
 # the patch itself should be (w+2*context_factor,h+2*context_factor)
 # but the base used for labeling should be (w,h)
-def img_crop_context(im, w, h,context_factor):
+def img_crop_context(im, w, h,context_factor, sub_mean=False):
 
     padding_type = 'reflect'
     cf = context_factor
@@ -127,7 +127,7 @@ def img_crop_context(im, w, h,context_factor):
                     im_patch = np.pad(im_patch, (( 0,pad_size0),(0,pad_size1),(0,0)), padding_type)
                     
 
-            if MEAN_IMG != None:
+            if MEAN_IMG != None and sub_mean:
                 im_patch = im_patch - MEAN_IMG        
             list_patches.append(im_patch)
 
@@ -157,7 +157,7 @@ def extract_data(filename, num_images, starting_id, context_factor):
     N_PATCHES_PER_IMAGE = (IMG_WIDTH/IMG_PATCH_SIZE)*(IMG_HEIGHT/IMG_PATCH_SIZE)
 
 
-    img_patches = [img_crop_context(imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE,context_factor) for i in range(num_images)]
+    img_patches = [img_crop_context(imgs[i], IMG_PATCH_SIZE, IMG_PATCH_SIZE,context_factor, sub_mean=True) for i in range(num_images)]
     data = [img_patches[i][j] for i in range(len(img_patches)) for j in range(len(img_patches[i]))]
     data = np.asarray(data)
     return data
@@ -438,7 +438,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # Get prediction for given input image 
     def get_prediction(img):
-        cropped = img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR)
+        cropped = img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR, sub_mean=True)
         data = np.asarray(cropped)
 
         data_node = tf.constant(data)
@@ -674,7 +674,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
                 # predict label
                 #img_prediction = get_prediction(img)
-                cropped = img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR)
+                cropped = img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR,sub_mean=True)
                 cropped = np.asarray(cropped)
 
                 #data_node = tf.constant(cropped)
