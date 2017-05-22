@@ -126,6 +126,9 @@ def img_crop_context(im, w, h,context_factor):
                     pad_size1 = 2*cf+w - im_patch.shape[1]
                     im_patch = np.pad(im_patch, (( 0,pad_size0),(0,pad_size1),(0,0)), padding_type)
                     
+
+            if MEAN_IMG != None:
+                im_patch = im_patch - MEAN_IMG        
             list_patches.append(im_patch)
 
     return list_patches
@@ -142,17 +145,8 @@ def extract_data(filename, num_images, starting_id, context_factor):
         if os.path.isfile(image_filename):
             print ('Loading ' + image_filename)
             img = mpimg.imread(image_filename)
-            # plt.imshow(img)
-            # plt.title('original')
-            # plt.show()
-            if MEAN_IMG != None:
-                img = img - MEAN_IMG
-                # plt.imshow(img)
-                # plt.title('shifted')
-                # plt.show()
-            #img = Image.open(image_filename)
-            #downscaled = img.resize((200,200)) #HARDCODED
-            #downscaled = np.asarray(downscaled)
+
+
             imgs.append(img)
         else:
             print ('File ' + image_filename + ' does not exist')
@@ -677,10 +671,7 @@ def main(argv=None):  # pylint: disable=unused-argument
                 fname = "test_"+str(i)
                 image_filename = test_set_dir + fname+"/"+fname + ".png"
                 img = mpimg.imread(image_filename)
-                if MEAN_IMG != None:
-                    print('img: ',img.shape)
-                    print('MEAN_IMG: ', MEAN_IMG.shape)
-                    img = img - MEAN_IMG
+
                 # predict label
                 #img_prediction = get_prediction(img)
                 cropped = img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR)

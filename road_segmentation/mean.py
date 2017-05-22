@@ -4,7 +4,6 @@ import scipy as scp
 import pylab as pyl
 from scipy.misc import imsave as  im_save
 import matplotlib.pyplot as plt
-import pywt
 import matplotlib.image as mpimg
 from numpy import linalg
 import warnings
@@ -106,8 +105,8 @@ def extract_data(filename, num_images, starting_id, context_factor):
 
 
 STARTING_ID = 1
-TRAINING_SIZE = 200
-data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/images/'
+TRAINING_SIZE = 214
+data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/images_shuffled/'
 train_data_filename = data_dir #+ 'images/'		
 
 train_data = extract_data(train_data_filename, TRAINING_SIZE, STARTING_ID, CONTEXT_ADDITIVE_FACTOR)
@@ -122,17 +121,17 @@ save_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
 im_save(save_dir+'mean_patch_64.png', mean_patch)
 
 
-for i in range(train_data.shape[0]):
-    f, axarr = plt.subplots(1,2)
-    orig = img_float_to_uint8(train_data[i,:,:,:])
-    axarr[0].imshow(orig)
+# for i in range(train_data.shape[0]):
+#     f, axarr = plt.subplots(1,2)
+#     orig = img_float_to_uint8(train_data[i,:,:,:])
+#     axarr[0].imshow(orig)
 
-    example_img = train_data[i,:,:,:] - mean_patch
-    #example_img = img_float_to_uint8(example_img)
+#     example_img = train_data[i,:,:,:] - mean_patch
+#     #example_img = img_float_to_uint8(example_img)
 
     
-    axarr[1].imshow(example_img)
+#     axarr[1].imshow(example_img)
 
 
-    plt.show()
+#     plt.show()
 
