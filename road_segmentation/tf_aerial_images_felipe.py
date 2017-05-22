@@ -42,11 +42,6 @@ init_type = 'xavier'
 
 LOGGING = False
 
-# SUBTRACTING MEAN SUCKS A LOT!
-MEAN_IMG_PATH = (os.path.dirname(os.path.realpath(__file__)))+'/training/mean_img.png'
-TEST_MEAN_IMG_PATH = (os.path.dirname(os.path.realpath(__file__)))+'/training/test_mean_img.png'
-MEAN_IMG = None # mpimg.imread(MEAN_IMG_PATH)
-TEST_MEAN_IMG = None # mpimg.imread(TEST_MEAN_IMG_PATH)
 
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
@@ -56,6 +51,12 @@ CONTEXT_ADDITIVE_FACTOR = 24 #patch context increased by 2x2, so a 8x8 patch bec
 IMG_PATCH_SIZE = 16 #should be at least dividor of 608
 CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
 
+MEAN_IMG_PATH = (os.path.dirname(os.path.realpath(__file__)))+'/training/mean_patch_'+str(CONTEXT_PATCH)+'.png'
+try:
+    MEAN_IMG = mpimg.imread(MEAN_IMG_PATH)
+except:
+    MEAN_IMG = None
+    print('No mean image found!')
 
 if CONTEXT_PATCH in range(40, 48+1):
     FC1_WIDTH = 576
@@ -676,10 +677,10 @@ def main(argv=None):  # pylint: disable=unused-argument
                 fname = "test_"+str(i)
                 image_filename = test_set_dir + fname+"/"+fname + ".png"
                 img = mpimg.imread(image_filename)
-                if TEST_MEAN_IMG != None:
+                if MEAN_IMG != None:
                     print('img: ',img.shape)
-                    print('MEAN_IMG: ', TEST_MEAN_IMG.shape)
-                    img = img - TEST_MEAN_IMG
+                    print('MEAN_IMG: ', MEAN_IMG.shape)
+                    img = img - MEAN_IMG
                 # predict label
                 #img_prediction = get_prediction(img)
                 cropped = img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR)
