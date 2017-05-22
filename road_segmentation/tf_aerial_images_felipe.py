@@ -30,12 +30,12 @@ NUM_EPOCHS = 10
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
-MODE = 'predict' # 'train' or 'predict'
+MODE = 'train' # 'train' or 'predict'
 
-STARTING_ID = 101 # 21, 41...
-TRAINING_SIZE = 3
+STARTING_ID = 1 # 21, 41...
+TRAINING_SIZE = 100 #114
 
-TEST_START_ID = 1
+TEST_START_ID = 1 
 TEST_SIZE = 50
 
 init_type = 'xavier'
@@ -603,7 +603,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         0.01,                # Base learning rate.
         batch * BATCH_SIZE,  # Current index into the dataset.
         train_size,          # Decay step.
-        0.95,                # Decay rate.
+        0.99,                # Decay rate.
         staircase=True)
     #learning_rate = 0.01
     tf.summary.scalar('learning_rate', learning_rate)
