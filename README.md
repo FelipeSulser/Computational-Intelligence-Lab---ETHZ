@@ -21,3 +21,4 @@
 - Convolution of size 9x9 to smooth
 - Binarize the image with threshold 0.5
 - `remove_filtering_neighbors()` with 7 neighboors
+- RandomForest with a window of 7x7 patches or 5x5 to predict the center's patch color.
