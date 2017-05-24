@@ -17,7 +17,6 @@ import tensorflow as tf
 import scipy
 from scipy import ndimage
 import math 
-from tensorflow.python.client import device_lib
 
 
 NUM_CHANNELS = 3 # RGB images
@@ -32,9 +31,9 @@ NUM_EPOCHS = 300
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
-MODE = 'predict' # 'train' or 'predict'
-STARTING_ID = 101 # 21, 41...
-TRAINING_SIZE = 114 #114
+MODE = 'train' # 'train' or 'predict'
+STARTING_ID = 1 # 21, 41...
+TRAINING_SIZE = 100 #114
 
 TEST_START_ID = 1 
 TEST_SIZE = 50
@@ -43,7 +42,6 @@ init_type = 'xavier'
 
 LOGGING = False
 #CUDA_VISIBLE_DEVICES=""
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
