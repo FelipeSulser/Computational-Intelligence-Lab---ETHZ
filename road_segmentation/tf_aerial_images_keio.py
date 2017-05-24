@@ -17,8 +17,6 @@ import tensorflow as tf
 import scipy
 from scipy import ndimage
 import math 
-from tensorflow.python.client import device_lib
-
 
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
@@ -32,9 +30,9 @@ NUM_EPOCHS = 300
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
-MODE = 'predict' # 'train' or 'predict'
-STARTING_ID = 101 # 21, 41...
-TRAINING_SIZE = 114 #114
+MODE = 'train' # 'train' or 'predict'
+STARTING_ID = 1 # 21, 41...
+TRAINING_SIZE = 100 #114
 
 TEST_START_ID = 1 
 TEST_SIZE = 50
@@ -42,8 +40,8 @@ TEST_SIZE = 50
 init_type = 'xavier'
 
 LOGGING = False
-#CUDA_VISIBLE_DEVICES=""
-os.environ["CUDA_VISIBLE_DEVICES"]="0"
+
+
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
@@ -249,6 +247,7 @@ def make_img_overlay(img, predicted_img):
     return new_img
 
 def main(argv=None):  # pylint: disable=unused-argument
+
     data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
     train_data_filename = data_dir + 'images_shuffled/'
     train_labels_filename = data_dir + 'groundtruth_shuffled/' 
@@ -319,29 +318,22 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     if init_type=='normal':
         conv1_weights = tf.Variable(
-            tf.truncated_normal([5, 5, NUM_CHANNELS, 64],  # 5x5 filter, depth 32.
+            tf.truncated_normal([9, 9, NUM_CHANNELS, 64],  # 5x5 filter, depth 32.
                                 stddev=0.1,
                                 seed=SEED), name='conv1_weights')
         conv1_biases = tf.Variable(tf.zeros([64]), name='conv1_biases')
 
         conv2_weights = tf.Variable(
-            tf.truncated_normal([3, 3, 64, 128],
+            tf.truncated_normal([7, 7, 64, 128],
                                 stddev=0.1,
                                 seed=SEED), name='conv2_weights')
         conv2_biases = tf.Variable(tf.zeros([128]), name='conv2_biases')
 
         conv3_weights = tf.Variable(
-            tf.truncated_normal([3, 3, 128, 256],
+            tf.truncated_normal([5, 5, 128, 128],
                                 stddev=0.1,
                                 seed=SEED), name='conv3_weights')
-        conv3_biases = tf.Variable(tf.constant(0.01, shape=[256]), name='conv3_biases')
-
-        conv4_weights = tf.Variable(
-            tf.truncated_normal([3,3,256,512],
-                                stddev=0.1,
-                                seed=SEED), name='conv4_weights')
-        conv4_biases = tf.Variable(tf.constant(0.01,shape=[512]), name='conv4_biases')
-        
+        conv3_biases = tf.Variable(tf.constant(0.01, shape=[128]), name='conv3_biases')
 
 
         fc1_weights = tf.Variable(  # fully connected, depth 512.
@@ -352,13 +344,13 @@ def main(argv=None):  # pylint: disable=unused-argument
         fc1_biases = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc1_biases')
 
         fc2_weights = tf.Variable(  # fully connected, depth 64.
-            tf.truncated_normal([2048, 2048],
+            tf.truncated_normal([2048, 768],
                                 stddev=0.1,
                                 seed=SEED), name='fc2_weights')
-        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc2_biases')
+        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[768]), name='fc2_biases')
 
         fc3_weights = tf.Variable(  # fully connected, depth 64.
-            tf.truncated_normal([2048, NUM_LABELS],
+            tf.truncated_normal([768, NUM_LABELS],
                                 stddev=0.1,
                                 seed=SEED), name='fc3_weights')
         fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
@@ -367,32 +359,27 @@ def main(argv=None):  # pylint: disable=unused-argument
  
     elif init_type == 'xavier': 
         conv1_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv1_weights = tf.Variable( conv1_weights_init(shape=[3, 3, NUM_CHANNELS, 64]), name='conv1_weights')
+        conv1_weights = tf.Variable( conv1_weights_init(shape=[9, 9, NUM_CHANNELS, 64]), name='conv1_weights')
         conv1_biases = tf.Variable(tf.constant(0.001, shape=[64]), name='conv1_biases')
 
         conv2_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv2_weights = tf.Variable( conv2_weights_init(shape=[3, 3, 64, 128]), name='conv2_weights')
+        conv2_weights = tf.Variable( conv2_weights_init(shape=[7, 7, 64, 128]), name='conv2_weights')
         conv2_biases = tf.Variable(tf.constant(0.001, shape=[128]), name='conv2_biases')
 
         conv3_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv3_weights = tf.Variable( conv3_weights_init(shape=[3, 3, 128, 256]), name='conv3_weights')
-        conv3_biases = tf.Variable(tf.constant(0.01, shape=[256]), name='conv3_biases')
-
-        conv4_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv4_weights = tf.Variable( conv4_weights_init(shape=[3,3,256,512]), name='conv4_weights')
-        conv4_biases = tf.Variable(tf.constant(0.01,shape=[512]), name='conv4_biases')
-
+        conv3_weights = tf.Variable( conv3_weights_init(shape=[5, 5, 128, 128]), name='conv3_weights')
+        conv3_biases = tf.Variable(tf.constant(0.01, shape=[128]), name='conv3_biases')
 
         fc1_weights_init = tf.contrib.layers.xavier_initializer()
         fc1_weights = tf.Variable(  fc1_weights_init(shape=[FC1_WIDTH, 2048]), name='fc1_weights')
         fc1_biases = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc1_biases')
 
         fc2_weights_init = tf.contrib.layers.xavier_initializer()
-        fc2_weights = tf.Variable( fc2_weights_init(shape=[2048, 2048]), name='fc2_weights')
-        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc_biases')
+        fc2_weights = tf.Variable( fc2_weights_init(shape=[2048, 768]), name='fc2_weights')
+        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[768]), name='fc_biases')
  
         fc3_weights_init = tf.contrib.layers.xavier_initializer()
-        fc3_weights = tf.Variable( fc2_weights_init(shape=[2048, NUM_LABELS]), name='fc3_weights')
+        fc3_weights = tf.Variable( fc2_weights_init(shape=[768, NUM_LABELS]), name='fc3_weights')
         fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
     else: 
         print('You have to specify some init_type')
@@ -447,10 +434,9 @@ def main(argv=None):  # pylint: disable=unused-argument
         # the same size as the input). Note that {strides} is a 4D array whose
         # shape matches the data layout: [image index, y, x, depth].
         data = tf.cast(data, dtype=tf.float32)
-        print(tf.shape(conv1_weights))
         conv1 = tf.nn.conv2d(data,
                             conv1_weights,
-                            strides=[1, 1, 1, 1], #changed to stride=4
+                            strides=[1, 2, 2, 1], #changed to stride=4
                             padding='SAME')
         # Bias and rectified linear non-linearity.
         relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_biases))
@@ -459,7 +445,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         # the data. Here we have a pooling window of 2, and a stride of 2.
         pool1 = tf.nn.max_pool(relu1,
                               ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1],
+                              strides=[1, 1, 1, 1],
                               padding='SAME')
 
        
@@ -469,11 +455,12 @@ def main(argv=None):  # pylint: disable=unused-argument
                             strides=[1, 1, 1, 1],
                             padding='SAME')
         relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_biases))
-       
         pool2 = tf.nn.max_pool(relu2,
-                                ksize = [1,2,2,1],
-                                strides=[1,2,2,1],
-                                padding='SAME')
+                              ksize=[1, 2, 2, 1],
+                              strides=[1, 2, 2, 1],
+                              padding='SAME')
+       
+        
 
         
         conv3 = tf.nn.conv2d(pool2,
@@ -481,39 +468,26 @@ def main(argv=None):  # pylint: disable=unused-argument
                             strides=[1,1,1,1],
                             padding='SAME')
         relu3 = tf.nn.relu(tf.nn.bias_add(conv3,conv3_biases))
-        
         pool3 = tf.nn.max_pool(relu3,
-                                ksize=[1,2,2,1],
-                                strides = [1,2,2,1],
-                                padding='SAME')
+                              ksize=[1, 2, 2, 1],
+                              strides=[1, 2, 2, 1],
+                              padding='SAME')
+
         
-        conv4 = tf.nn.conv2d(pool3,
-                            conv4_weights,
-                            strides=[1,1,1,1],
-                            padding='SAME')
-        relu4 = tf.nn.relu(tf.nn.bias_add(conv4,conv4_biases))
-       
-        pool4 = tf.nn.max_pool(relu4,
-                                ksize=[1,2,2,1],
-                                strides=[1,2,2,1],
-                                padding='SAME')
         
 
         if train:
             print("relu1: "+str(relu1.get_shape()))
             print("Pool1: "+str(pool1.get_shape()))
             print("relu2: "+str(relu2.get_shape()))
-            print("pool2: "+str(pool2.get_shape()))
             print("relu3: "+str(relu3.get_shape()))
-            print("pool3: "+str(pool3.get_shape()))
-            print("relu4: "+str(relu4.get_shape()))
-            print("pool4: "+str(pool4.get_shape()))
+
 
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
         # fully connected layers.
-        relu_shape = pool4.get_shape().as_list()
+        relu_shape = pool3.get_shape().as_list()
         reshape = tf.reshape(
-            pool4,
+            pool3,
             [relu_shape[0], relu_shape[1] * relu_shape[2] * relu_shape[3]])
         # Fully connected layer. Note that the '+' operation automatically
         # broadcasts the biases.
@@ -553,7 +527,6 @@ def main(argv=None):  # pylint: disable=unused-argument
         return out
 
     # Training computation: logits + cross-entropy loss.
-    
     logits = model(train_data_node, MODE=='train') # BATCH_SIZE*NUM_LABELS
     # print 'logits = ' + str(logits.get_shape()) + ' train_labels_node = ' + str(train_labels_node.get_shape())
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
@@ -561,10 +534,10 @@ def main(argv=None):  # pylint: disable=unused-argument
     tf.summary.scalar('loss', loss)
 
     all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, 
-                    conv3_weights, conv3_biases, conv4_weights, conv4_biases, 
+                    conv3_weights, conv3_biases,
                     fc1_weights, fc1_biases, fc2_weights, fc2_biases, fc3_weights, fc3_biases]
     all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 
-                    'conv3_weights','conv3_biases', 'conv4_weights','conv4_biases',
+                    'conv3_weights','conv3_biases',
                     'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases', 'fc3_weights','fc3_biases']
     all_grads_node = tf.gradients(loss, all_params_node)
     all_grad_norms_node = []
