@@ -1,5 +1,10 @@
 # Computational Intelligence Lab ETHZ 2017
 
+## Testing
+- deep network datafiles are in drive called "datafiles_deep"
+- deep network raw output is in drive called "result_raw_deep"
+
+
 ## Road Segmentation
 
 ### Data set augmentation

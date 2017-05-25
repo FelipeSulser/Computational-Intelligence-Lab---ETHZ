@@ -7,15 +7,13 @@ import matplotlib.pyplot as plt
 
 
 
-NUM_FILES = 214
-
 if __name__ == '__main__':
     imgs = []
     data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
-    train_data_input = data_dir + 'images/'
+    train_data_input = data_dir + 'images_extended/'
     train_data_output = data_dir + 'images_shuffled/'
 
-    train_labels_input = data_dir + 'groundtruth/' 
+    train_labels_input = data_dir + 'groundtruth_extended/' 
     train_labels_output = data_dir + 'groundtruth_shuffled/' 
 
     if not os.path.isdir(train_data_output):
@@ -25,7 +23,15 @@ if __name__ == '__main__':
 
     save_start_index = 1
 
-    input_idx = range(1, NUM_FILES+1)
+    filenames = [f for f in os.listdir(train_data_input) if f.endswith('.png')]
+    for filename in filenames:
+        prefix = 'satImage_'
+        sufix = '.png'
+        index = filename[len(prefix):-len(sufix)]
+        print(index)
+    numfiles = len(filenames)
+
+    input_idx = range(1, numfiles+1)
     input_idx = np.asarray(input_idx)
 
     np.random.shuffle(input_idx)
