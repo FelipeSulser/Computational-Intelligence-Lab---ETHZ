@@ -7,8 +7,6 @@ import matplotlib.pyplot as plt
 
 
 
-NUM_FILES = 314
-
 if __name__ == '__main__':
     imgs = []
     data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
@@ -25,7 +23,10 @@ if __name__ == '__main__':
 
     save_start_index = 1
 
-    input_idx = range(1, NUM_FILES+1)
+    filenames = [f for f in listdir(train_data_input) if f.endswith('.png')]
+    numfiles = len(filenames)
+
+    input_idx = range(1, numfiles+1)
     input_idx = np.asarray(input_idx)
 
     np.random.shuffle(input_idx)
