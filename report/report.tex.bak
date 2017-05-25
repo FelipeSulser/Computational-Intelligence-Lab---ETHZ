@@ -26,9 +26,10 @@
   Image segmentation of the aerial road images has become a significant part of the research in the recent years.
   The use cases are numerous and we are going to focus on the simpler, but still very useful part, namely just the road
   segmentation. Our task is to classify the pixels as either road or background. To achieve our goal we have combined
-  techniques proposed in several other papers and have adjusted these to suit  
-  
-  In this report we are presenting our solution for th 
+  techniques proposed in several other papers and have adjusted these to suite our requirements and resources best as possible.  
+  The main part of our solution is convolution neural network. Beside it we apply the techniques for data augmentation,
+  feature selection and post-processing. The results we obtained with our solution are very close to the state-of-the-art
+  solutions proposed in the other papers, but very often, our model is much simpler.
 \end{abstract}
 
 \section{Introduction}

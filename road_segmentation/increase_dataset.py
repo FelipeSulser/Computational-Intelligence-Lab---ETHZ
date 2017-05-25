@@ -13,6 +13,7 @@ from scipy import ndimage
 import math
 
 DOUBLE_AUGMENT = [23,26,27,42,72,83,91]
+MIRROR_ALL = True
 
 
 if __name__ == '__main__':
@@ -33,7 +34,8 @@ if __name__ == '__main__':
 
         imageid = "satImage_%.3d" % i
         image_filename = train_data_filename + imageid + ".png"
-        if os.path.isfile(image_filename):
+        label_image_filename = train_labels_filename + imageid + ".png"
+        if os.path.isfile(image_filename) and os.path.isfile(label_image_filename):
             img = Image.open(image_filename)
             img2 = img.rotate(90)
             new_ix = 100+i
@@ -44,42 +46,41 @@ if __name__ == '__main__':
             img.save(out_data_dir+"satImage_"+str(i)+".png")
            
 
-        label_image_filename = train_labels_filename + imageid + ".png"
-        if os.path.isfile(image_filename):
             print ('Loading ' + label_image_filename)
             labelimg = Image.open(label_image_filename)
             labelimg2 = labelimg.rotate(90)
-            label_new_ix = 100+i
-            label_new_imageid = "satImage_%.3d" % label_new_ix
+
+            label_new_imageid = "satImage_%.3d" % new_ix
             labelimg2.save(out_label_dir+label_new_imageid+".png")
             #save original label too
-            labelimg.save(out_label_dir+"satImage_"+str(i)+".png")
+            labelimg.save(out_label_dir+imageid+".png")
 
-        #Mirror rotation
 
-        if os.path.isfile(image_filename):
-            img = Image.open(image_filename)
-            img2 = img.rotate(180)
-            new_ix = 200+i
-            new_imageid = "satImage_%.3d" % new_ix
-            img2.save(out_data_dir+new_imageid+".png")
-           
+            #Mirror rotation
+            if MIRROR_ALL:
+                img = Image.open(image_filename)
+                img2 = img.rotate(180)
+                new_ix_mirror = 200+i
+                new_imageid = "satImage_%.3d" % new_ix_mirror
+                img2.save(out_data_dir+new_imageid+".png")
 
-        label_image_filename = train_labels_filename + imageid + ".png"
-        if os.path.isfile(image_filename):
-            print ('Loading ' + label_image_filename)
-            labelimg = Image.open(label_image_filename)
-            labelimg2 = labelimg.rotate(180)
-            label_new_ix = 200+i
-            label_new_imageid = "satImage_%.3d" % label_new_ix
-            labelimg2.save(out_label_dir+label_new_imageid+".png")
+                print ('Loading ' + label_image_filename)
+                labelimg = Image.open(label_image_filename)
+                labelimg2 = labelimg.rotate(180)
+                
+                label_new_imageid = "satImage_%.3d" % new_ix_mirror
+                # TODO: felipe chech this :D
+                labelimg2.save(out_label_dir+label_new_imageid+".png")
             
         else:
-            print ('File ' + image_filename + ' does not exist')
+            print ('File ' + image_filename + 'or its label file does not exist')
 
     save_start_index = 1
 
-    NEW_IDX_START = 300
+    if MIRROR_ALL:
+        NEW_IDX_START = 300
+    else:
+        NEW_IDX_START = 200
     ROTATION = 180
 
     # Handpicked diagonal roads to augment dataset even further
@@ -107,7 +108,7 @@ if __name__ == '__main__':
         else:
             print ('File ' + image_filename + ' does not exist')
 
-    NEW_IDX_START = 307
+    NEW_IDX_START = NEW_IDX_START + len(DOUBLE_AUGMENT)
     ROTATION = 270
     save_start_index = 1
 
