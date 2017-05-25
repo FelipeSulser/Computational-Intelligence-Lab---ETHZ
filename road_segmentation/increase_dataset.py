@@ -7,12 +7,13 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import code
 import tensorflow.python.platform
-import numpy
+import numpy as np
 import tensorflow as tf
 from scipy import ndimage
 import math
 
 DOUBLE_AUGMENT = [23,26,27,42,72,83,91]
+TO_REMOVE = [33]
 MIRROR_ALL = True
 
 
@@ -21,56 +22,60 @@ if __name__ == '__main__':
     data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
     train_data_filename = data_dir + 'images/'
     train_labels_filename = data_dir + 'groundtruth/' 
+
     out_data_dir = data_dir+'images_extended/'
+    out_label_dir = data_dir+'groundtruth_extended/'
     if not os.path.isdir(out_data_dir):
         os.mkdir(out_data_dir) 
-
-    out_label_dir = data_dir+'groundtruth_extended/'
     if not os.path.isdir(out_label_dir):
         os.mkdir(out_label_dir) 
+
+    j = 1
     for i in range(1, 101):
 
-        #Transpose rotation
+        if i in TO_REMOVE:
+            continue
 
+        # Transpose rotation
         imageid = "satImage_%.3d" % i
         image_filename = train_data_filename + imageid + ".png"
         label_image_filename = train_labels_filename + imageid + ".png"
         if os.path.isfile(image_filename) and os.path.isfile(label_image_filename):
             img = Image.open(image_filename)
             img2 = img.rotate(90)
-            new_ix = 100+i
+            new_ix = 100+j
             new_imageid = "satImage_%.3d" % new_ix
             img2.save(out_data_dir+new_imageid+".png")
 
             #save the original image too
-            img.save(out_data_dir+"satImage_"+str(i)+".png")
+            imageid = "satImage_%.3d" % j
+            img.save(out_data_dir+imageid+".png")
            
 
             print ('Loading ' + label_image_filename)
             labelimg = Image.open(label_image_filename)
             labelimg2 = labelimg.rotate(90)
 
-            label_new_imageid = "satImage_%.3d" % new_ix
-            labelimg2.save(out_label_dir+label_new_imageid+".png")
+            labelimg2.save(out_label_dir+new_imageid+".png")
             #save original label too
             labelimg.save(out_label_dir+imageid+".png")
 
 
             #Mirror rotation
             if MIRROR_ALL:
-                img = Image.open(image_filename)
-                img2 = img.rotate(180)
-                new_ix_mirror = 200+i
+                img2 = np.fliplr(img)
+                new_ix_mirror = 200+j
                 new_imageid = "satImage_%.3d" % new_ix_mirror
+                img2 = Image.fromarray(img2)
                 img2.save(out_data_dir+new_imageid+".png")
 
-                print ('Loading ' + label_image_filename)
-                labelimg = Image.open(label_image_filename)
-                labelimg2 = labelimg.rotate(180)
-                
-                label_new_imageid = "satImage_%.3d" % new_ix_mirror
+                labelimg2 = np.fliplr(labelimg)
+
                 # TODO: felipe chech this :D
-                labelimg2.save(out_label_dir+label_new_imageid+".png")
+                labelimg2 = Image.fromarray(labelimg2)
+                labelimg2.save(out_label_dir+new_imageid+".png")
+
+            j += 1
             
         else:
             print ('File ' + image_filename + 'or its label file does not exist')
@@ -78,9 +83,9 @@ if __name__ == '__main__':
     save_start_index = 1
 
     if MIRROR_ALL:
-        NEW_IDX_START = 300
+        NEW_IDX_START = 300 - len(TO_REMOVE)
     else:
-        NEW_IDX_START = 200
+        NEW_IDX_START = 200 - len(TO_REMOVE)
     ROTATION = 180
 
     # Handpicked diagonal roads to augment dataset even further
