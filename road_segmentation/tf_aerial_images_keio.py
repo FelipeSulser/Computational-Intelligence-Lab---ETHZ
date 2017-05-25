@@ -20,18 +20,17 @@ import math
 
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
-NUM_LABELS = 2
+NUM_LABELS = 2 
 
 SEED = 66478  # Set to None for random seed.
 
 BATCH_SIZE = 32 # has to be dividable by 2 so we can split 2 classes to be equal sized
 #TODO change epoch number
-NUM_EPOCHS = 10
+NUM_EPOCHS = 300
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
 MODE = 'train' # 'train' or 'predict'
-
 STARTING_ID = 1 # 21, 41...
 TRAINING_SIZE = 100 #114
 
@@ -51,17 +50,11 @@ CONTEXT_ADDITIVE_FACTOR = 24 #patch context increased by 2x2, so a 8x8 patch bec
 IMG_PATCH_SIZE = 16 #should be at least dividor of 608
 CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
 
-MEAN_IMG_PATH = (os.path.dirname(os.path.realpath(__file__)))+'/training/mean_patch_'+str(CONTEXT_PATCH)+'.png'
-try:
-    MEAN_IMG = mpimg.imread(MEAN_IMG_PATH)
-except:
-    MEAN_IMG = None
-    print('No mean image found!')
 
 if CONTEXT_PATCH in range(40, 48+1):
     FC1_WIDTH = 576
 elif CONTEXT_PATCH in range(50,64+1):
-    FC1_WIDTH = 1024
+    FC1_WIDTH = 8192#1024
 elif CONTEXT_PATCH == 32:
     FC1_WIDTH = 256  
 else:
@@ -125,10 +118,7 @@ def img_crop_context(im, w, h,context_factor, sub_mean=False):
                     pad_size0 = 2*cf+h - im_patch.shape[0]
                     pad_size1 = 2*cf+w - im_patch.shape[1]
                     im_patch = np.pad(im_patch, (( 0,pad_size0),(0,pad_size1),(0,0)), padding_type)
-                    
-
-            if MEAN_IMG != None and sub_mean:
-                im_patch = im_patch - MEAN_IMG        
+                         
             list_patches.append(im_patch)
 
     return list_patches
@@ -328,46 +318,39 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     if init_type=='normal':
         conv1_weights = tf.Variable(
-            tf.truncated_normal([5, 5, NUM_CHANNELS, 16],  # 5x5 filter, depth 32.
+            tf.truncated_normal([9, 9, NUM_CHANNELS, 64],  # 5x5 filter, depth 32.
                                 stddev=0.1,
                                 seed=SEED), name='conv1_weights')
-        conv1_biases = tf.Variable(tf.zeros([16]), name='conv1_biases')
+        conv1_biases = tf.Variable(tf.zeros([64]), name='conv1_biases')
 
         conv2_weights = tf.Variable(
-            tf.truncated_normal([3, 3, 16, 32],
+            tf.truncated_normal([7, 7, 64, 128],
                                 stddev=0.1,
                                 seed=SEED), name='conv2_weights')
-        conv2_biases = tf.Variable(tf.zeros([32]), name='conv2_biases')
+        conv2_biases = tf.Variable(tf.zeros([128]), name='conv2_biases')
 
         conv3_weights = tf.Variable(
-            tf.truncated_normal([3, 3, 32, 32],
+            tf.truncated_normal([5, 5, 128, 128],
                                 stddev=0.1,
                                 seed=SEED), name='conv3_weights')
-        conv3_biases = tf.Variable(tf.constant(0.01, shape=[32]), name='conv3_biases')
-
-        conv4_weights = tf.Variable(
-            tf.truncated_normal([3,3,32,64],
-                                stddev=0.1,
-                                seed=SEED), name='conv4_weights')
-        conv4_biases = tf.Variable(tf.constant(0.01,shape=[64]), name='conv4_biases')
-        
+        conv3_biases = tf.Variable(tf.constant(0.01, shape=[128]), name='conv3_biases')
 
 
         fc1_weights = tf.Variable(  # fully connected, depth 512.
             #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
-            tf.truncated_normal([FC1_WIDTH, 48],
+            tf.truncated_normal([FC1_WIDTH, 2048],
                                 stddev=0.1,
                                 seed=SEED), name='fc1_weights')
-        fc1_biases = tf.Variable(tf.constant(0.01, shape=[48]), name='fc1_biases')
+        fc1_biases = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc1_biases')
 
         fc2_weights = tf.Variable(  # fully connected, depth 64.
-            tf.truncated_normal([48, 16],
+            tf.truncated_normal([2048, 768],
                                 stddev=0.1,
                                 seed=SEED), name='fc2_weights')
-        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[16]), name='fc2_biases')
+        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[768]), name='fc2_biases')
 
         fc3_weights = tf.Variable(  # fully connected, depth 64.
-            tf.truncated_normal([16, NUM_LABELS],
+            tf.truncated_normal([768, NUM_LABELS],
                                 stddev=0.1,
                                 seed=SEED), name='fc3_weights')
         fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
@@ -376,32 +359,27 @@ def main(argv=None):  # pylint: disable=unused-argument
  
     elif init_type == 'xavier': 
         conv1_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv1_weights = tf.Variable( conv1_weights_init(shape=[5, 5, NUM_CHANNELS, 16]), name='conv1_weights')
-        conv1_biases = tf.Variable(tf.constant(0.001, shape=[16]), name='conv1_biases')
+        conv1_weights = tf.Variable( conv1_weights_init(shape=[9, 9, NUM_CHANNELS, 64]), name='conv1_weights')
+        conv1_biases = tf.Variable(tf.constant(0.001, shape=[64]), name='conv1_biases')
 
         conv2_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv2_weights = tf.Variable( conv2_weights_init(shape=[3, 3, 16, 32]), name='conv2_weights')
-        conv2_biases = tf.Variable(tf.constant(0.001, shape=[32]), name='conv2_biases')
+        conv2_weights = tf.Variable( conv2_weights_init(shape=[7, 7, 64, 128]), name='conv2_weights')
+        conv2_biases = tf.Variable(tf.constant(0.001, shape=[128]), name='conv2_biases')
 
         conv3_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv3_weights = tf.Variable( conv3_weights_init(shape=[3, 3, 32, 32]), name='conv3_weights')
-        conv3_biases = tf.Variable(tf.constant(0.01, shape=[32]), name='conv3_biases')
-
-        conv4_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv4_weights = tf.Variable( conv4_weights_init(shape=[3,3,32,64]), name='conv4_weights')
-        conv4_biases = tf.Variable(tf.constant(0.01,shape=[64]), name='conv4_biases')
-
+        conv3_weights = tf.Variable( conv3_weights_init(shape=[5, 5, 128, 128]), name='conv3_weights')
+        conv3_biases = tf.Variable(tf.constant(0.01, shape=[128]), name='conv3_biases')
 
         fc1_weights_init = tf.contrib.layers.xavier_initializer()
-        fc1_weights = tf.Variable(  fc1_weights_init(shape=[FC1_WIDTH, 48]), name='fc1_weights')
-        fc1_biases = tf.Variable(tf.constant(0.01, shape=[48]), name='fc1_biases')
+        fc1_weights = tf.Variable(  fc1_weights_init(shape=[FC1_WIDTH, 2048]), name='fc1_weights')
+        fc1_biases = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc1_biases')
 
         fc2_weights_init = tf.contrib.layers.xavier_initializer()
-        fc2_weights = tf.Variable( fc2_weights_init(shape=[48, 16]), name='fc2_weights')
-        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[16]), name='fc_biases')
+        fc2_weights = tf.Variable( fc2_weights_init(shape=[2048, 768]), name='fc2_weights')
+        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[768]), name='fc_biases')
  
         fc3_weights_init = tf.contrib.layers.xavier_initializer()
-        fc3_weights = tf.Variable( fc2_weights_init(shape=[16, NUM_LABELS]), name='fc3_weights')
+        fc3_weights = tf.Variable( fc2_weights_init(shape=[768, NUM_LABELS]), name='fc3_weights')
         fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
     else: 
         print('You have to specify some init_type')
@@ -426,7 +404,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         V = tf.reshape(V, (-1, img_w, img_h, 1))
         return V
     
-    # Make an image summary for 3d tensor image with index idx
+        # Make an image summary for 3d tensor image with index idx
     def get_image_summary_3d(img):
         V = tf.slice(img, (0, 0, 0), (1, -1, -1))
         img_w = img.get_shape().as_list()[1]
@@ -447,9 +425,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         img_prediction = label_to_img(img.shape[0], img.shape[1], IMG_PATCH_SIZE, IMG_PATCH_SIZE, output_prediction)
 
         return img_prediction
-
-
-
+    
     # We will replicate the model structure for the training subgraph, as well
     # as the evaluation subgraphs, while sharing the trainable parameters.
     def model(data, train=False):
@@ -460,7 +436,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         data = tf.cast(data, dtype=tf.float32)
         conv1 = tf.nn.conv2d(data,
                             conv1_weights,
-                            strides=[1, 1, 1, 1], #changed to stride=4
+                            strides=[1, 2, 2, 1], #changed to stride=4
                             padding='SAME')
         # Bias and rectified linear non-linearity.
         relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_biases))
@@ -469,7 +445,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         # the data. Here we have a pooling window of 2, and a stride of 2.
         pool1 = tf.nn.max_pool(relu1,
                               ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1],
+                              strides=[1, 1, 1, 1],
                               padding='SAME')
 
        
@@ -479,11 +455,12 @@ def main(argv=None):  # pylint: disable=unused-argument
                             strides=[1, 1, 1, 1],
                             padding='SAME')
         relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_biases))
-       
         pool2 = tf.nn.max_pool(relu2,
-                                ksize = [1,2,2,1],
-                                strides=[1,2,2,1],
-                                padding='SAME')
+                              ksize=[1, 2, 2, 1],
+                              strides=[1, 2, 2, 1],
+                              padding='SAME')
+       
+        
 
         
         conv3 = tf.nn.conv2d(pool2,
@@ -491,39 +468,26 @@ def main(argv=None):  # pylint: disable=unused-argument
                             strides=[1,1,1,1],
                             padding='SAME')
         relu3 = tf.nn.relu(tf.nn.bias_add(conv3,conv3_biases))
-        
         pool3 = tf.nn.max_pool(relu3,
-                                ksize=[1,2,2,1],
-                                strides = [1,2,2,1],
-                                padding='SAME')
+                              ksize=[1, 2, 2, 1],
+                              strides=[1, 2, 2, 1],
+                              padding='SAME')
+
         
-        conv4 = tf.nn.conv2d(pool3,
-                            conv4_weights,
-                            strides=[1,1,1,1],
-                            padding='SAME')
-        relu4 = tf.nn.relu(tf.nn.bias_add(conv4,conv4_biases))
-       
-        pool4 = tf.nn.max_pool(relu4,
-                                ksize=[1,2,2,1],
-                                strides=[1,2,2,1],
-                                padding='SAME')
         
 
         if train:
             print("relu1: "+str(relu1.get_shape()))
             print("Pool1: "+str(pool1.get_shape()))
             print("relu2: "+str(relu2.get_shape()))
-            print("pool2: "+str(pool2.get_shape()))
             print("relu3: "+str(relu3.get_shape()))
-            print("pool3: "+str(pool3.get_shape()))
-            print("relu4: "+str(relu4.get_shape()))
-            print("pool4: "+str(pool4.get_shape()))
+
 
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
         # fully connected layers.
-        relu_shape = pool4.get_shape().as_list()
+        relu_shape = pool3.get_shape().as_list()
         reshape = tf.reshape(
-            pool4,
+            pool3,
             [relu_shape[0], relu_shape[1] * relu_shape[2] * relu_shape[3]])
         # Fully connected layer. Note that the '+' operation automatically
         # broadcasts the biases.
@@ -535,8 +499,8 @@ def main(argv=None):  # pylint: disable=unused-argument
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.
         if train:
-            hidden = tf.nn.dropout(hidden1, 0.8, seed=SEED)
-            hidden2 = tf.nn.dropout(hidden2,0.8,seed=SEED)
+            hidden = tf.nn.dropout(hidden1, 0.5, seed=SEED)
+            hidden2 = tf.nn.dropout(hidden2,0.5,seed=SEED)
 
         out = tf.matmul(hidden2, fc3_weights) + fc3_biases
 
@@ -570,10 +534,10 @@ def main(argv=None):  # pylint: disable=unused-argument
     tf.summary.scalar('loss', loss)
 
     all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, 
-                    conv3_weights, conv3_biases, conv4_weights, conv4_biases, 
+                    conv3_weights, conv3_biases,
                     fc1_weights, fc1_biases, fc2_weights, fc2_biases, fc3_weights, fc3_biases]
     all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 
-                    'conv3_weights','conv3_biases', 'conv4_weights','conv4_biases',
+                    'conv3_weights','conv3_biases',
                     'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases', 'fc3_weights','fc3_biases']
     all_grads_node = tf.gradients(loss, all_params_node)
     all_grad_norms_node = []
@@ -595,10 +559,10 @@ def main(argv=None):  # pylint: disable=unused-argument
     batch = tf.Variable(0, name='batch')
     # Decay once per epoch, using an exponential schedule starting at 0.01.
     learning_rate = tf.train.exponential_decay(
-        0.01,                # Base learning rate.
+        0.001,                # Base learning rate.
         batch * BATCH_SIZE,  # Current index into the dataset.
         train_size,          # Decay step.
-        0.99,                # Decay rate.
+        1.00,                # Decay rate.
         staircase=True)
     #learning_rate = 0.01
     tf.summary.scalar('learning_rate', learning_rate)

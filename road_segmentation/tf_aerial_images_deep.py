@@ -18,6 +18,7 @@ import scipy
 from scipy import ndimage
 import math 
 
+
 NUM_CHANNELS = 3 # RGB images
 PIXEL_DEPTH = 255
 NUM_LABELS = 2 
@@ -31,8 +32,8 @@ RECORDING_STEP = 1000
 DOWNSCALE = 1
 
 MODE = 'train' # 'train' or 'predict'
-STARTING_ID = 101 # 21, 41...
-TRAINING_SIZE = 114 #114
+STARTING_ID = 1 # 21, 41...
+TRAINING_SIZE = 100 #114
 
 TEST_START_ID = 1 
 TEST_SIZE = 50
@@ -40,8 +41,7 @@ TEST_SIZE = 50
 init_type = 'xavier'
 
 LOGGING = False
-
-
+#CUDA_VISIBLE_DEVICES=""
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
 # image size should be an integer multiple of this number!
@@ -247,7 +247,6 @@ def make_img_overlay(img, predicted_img):
     return new_img
 
 def main(argv=None):  # pylint: disable=unused-argument
-
     data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
     train_data_filename = data_dir + 'images_shuffled/'
     train_labels_filename = data_dir + 'groundtruth_shuffled/' 
@@ -446,6 +445,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         # the same size as the input). Note that {strides} is a 4D array whose
         # shape matches the data layout: [image index, y, x, depth].
         data = tf.cast(data, dtype=tf.float32)
+        print(tf.shape(conv1_weights))
         conv1 = tf.nn.conv2d(data,
                             conv1_weights,
                             strides=[1, 1, 1, 1], #changed to stride=4
@@ -551,6 +551,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         return out
 
     # Training computation: logits + cross-entropy loss.
+    
     logits = model(train_data_node, MODE=='train') # BATCH_SIZE*NUM_LABELS
     # print 'logits = ' + str(logits.get_shape()) + ' train_labels_node = ' + str(train_labels_node.get_shape())
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
@@ -583,7 +584,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     batch = tf.Variable(0, name='batch')
     # Decay once per epoch, using an exponential schedule starting at 0.01.
     learning_rate = tf.train.exponential_decay(
-        0.0001,                # Base learning rate.
+        0.001,                # Base learning rate.
         batch * BATCH_SIZE,  # Current index into the dataset.
         train_size,          # Decay step.
         1.00,                # Decay rate.
