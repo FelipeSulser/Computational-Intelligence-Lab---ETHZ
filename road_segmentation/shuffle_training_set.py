@@ -23,7 +23,12 @@ if __name__ == '__main__':
 
     save_start_index = 1
 
-    filenames = [f for f in listdir(train_data_input) if f.endswith('.png')]
+    filenames = [f for f in os.listdir(train_data_input) if f.endswith('.png')]
+    for filename in filenames:
+        prefix = 'satImage_'
+        sufix = '.png'
+        index = filename[len(prefix):-len(sufix)]
+        print(index)
     numfiles = len(filenames)
 
     input_idx = range(1, numfiles+1)

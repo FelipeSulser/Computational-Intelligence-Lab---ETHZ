@@ -43,7 +43,7 @@ if __name__ == '__main__':
         if os.path.isfile(image_filename) and os.path.isfile(label_image_filename):
             img = Image.open(image_filename)
             img2 = img.rotate(90)
-            new_ix = 100+j
+            new_ix = 100-len(TO_REMOVE)+j
             new_imageid = "satImage_%.3d" % new_ix
             img2.save(out_data_dir+new_imageid+".png")
 
@@ -64,7 +64,7 @@ if __name__ == '__main__':
             #Mirror rotation
             if MIRROR_ALL:
                 img2 = np.fliplr(img)
-                new_ix_mirror = 200+j
+                new_ix_mirror = 2*(100-len(TO_REMOVE))+j
                 new_imageid = "satImage_%.3d" % new_ix_mirror
                 img2 = Image.fromarray(img2)
                 img2.save(out_data_dir+new_imageid+".png")
