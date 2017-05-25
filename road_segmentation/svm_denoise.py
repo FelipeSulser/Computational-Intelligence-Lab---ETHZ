@@ -15,6 +15,10 @@ from sklearn.pipeline import Pipeline
 from sklearn.grid_search import GridSearchCV
 from sklearn.metrics import log_loss
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neural_network import MLPClassifier
+
 TRAIN = False #If false, then predict
 PATCH_SIZE = 16
 CONTEXT_SIZE = 5 # means that for patch i,j we consider the square i-ps*3,j-ps*3 to i+ps*3, j+ps*3
@@ -58,8 +62,8 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
 
     numblockheight = int(imgheight/block_size)
 
-    for i in range(1,numblockwidth-2):
-        for j in range(1, numblockheight-2):
+    for i in range(1,numblockwidth-1):
+        for j in range(1, numblockheight-1):
             pixel_i = i*block_size
             pixel_j = j*block_size
 
@@ -68,7 +72,6 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
                 neighbors = np.zeros(8)
 
                 #black is 0
-
                 neighbors[0] = img[pixel_i-block_size,pixel_j]
                 neighbors[1] = img[pixel_i+block_size,pixel_j]
                 neighbors[2] = img[pixel_i,pixel_j-block_size]
@@ -81,10 +84,12 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
                 sum_val = np.sum(neighbors)
                 if(sum_val > black_threshold):
                     #repaint block
-                    print('  Block repainted to BLACK!')
+                    print('Block repainted to BLACK!')
                     for xx in range(0,block_size):
                         for yy in range(0,block_size):
                             img[pixel_i+xx,pixel_j+yy] = 1.0
+            
+            
             else: #white patch 1
                 #if not surrounded by 3 cut it
                 neighbors = np.zeros(8)
@@ -102,12 +107,13 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
 
 
                 sum_val = np.sum(neighbors)
-                wh_threshold = NEIGHBOOR_TO_CONSIDER-black_threshold+1
+                wh_threshold = NEIGHBOOR_TO_CONSIDER-black_threshold
                 if(sum_val < wh_threshold):
                     print('  Block repainted to WHITE!')
                     for xx in range(0,block_size):
                         for yy in range(0,block_size):
                             img[pixel_i+xx,pixel_j+yy] = 0.0
+            
 
 
     return img
@@ -155,9 +161,9 @@ if TRAIN:
     real_y = []
     train_x = []
     max_val= 0
-    train_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/training/groundtruth_shuffled/"
-    label_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/training/groundtruth_shuffled/"
-    for xx in range(1, 215):
+    train_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/training/groundtruth_extended/"
+    label_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/training/groundtruth_extended/"
+    for xx in range(1, 312):
         imageid = "satImage_%.3d" % xx
         #imageid = "prediction_"+str(i)
         image_filename = train_img_path +imageid+ ".png"
@@ -198,7 +204,10 @@ if TRAIN:
     print("Finished loading images")
     print("Computing Randomforest model...")
     #rfc = svm.SVC(C=1,kernel='rbf')
-    rfc = RandomForestClassifier(n_estimators=1000,n_jobs=4)
+    #rfc = RandomForestClassifier(n_estimators=1000,n_jobs=4)
+    rfc = MLPClassifier((512,512),alpha=0.01,epsilon=0.1,tol=1e-5)
+
+
     # gammas = np.array([0.1,0.01,0.001])
     # cs = np.array([10,1,0.1])
     # grid_dict = dict(gamma=gammas,C=cs)
@@ -207,6 +216,7 @@ if TRAIN:
     # print("BEST PARAMETERS")
     # print(classifier.best_params_)
     rfc.fit(train_x,real_y) 
+    print(rfc.get_params())
     joblib.dump(rfc, 'rfcmodel214.pkl') 
 else:
     clf = joblib.load('rfcmodel214.pkl')
@@ -242,8 +252,8 @@ else:
             img[i*PATCH_SIZE:i*PATCH_SIZE+PATCH_SIZE,j*PATCH_SIZE:j*PATCH_SIZE+PATCH_SIZE] = y_estim[it]
             it+=1
         
-        img = binarize(img,PATCH_SIZE,0.4)
+        img = binarize(img,PATCH_SIZE,0.5)
         filtered = remove_filtering_neighbors(img,7,block_size=16)
-        filtered = fill_rows_and_cols(filtered, missing_blocks=3)
+        #filtered = fill_rows_and_cols(filtered, missing_blocks=3)
         save_str = output_img_path+imageid+".png"
-        scipy.misc.imsave(save_str,img)
+        scipy.misc.imsave(save_str,filtered)
