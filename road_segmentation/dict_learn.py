@@ -55,15 +55,11 @@ def img_crop(im, w, h):
             list_patches.append(im_patch)
     return list_patches
 
-save_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/sharp_training/'
-if not os.path.isdir(save_dir):
-    os.mkdir(save_dir) 
 
 
 data_dir = (os.path.dirname(os.path.realpath(__file__)))+'/training/'
-train_data_filename = data_dir + 'images_shuffled/'
 train_labels_filename = data_dir + 'groundtruth_shuffled/' 
-pred_filename = (os.path.dirname(os.path.realpath(__file__)))+'/predictions_test/result/'
+pred_filename = (os.path.dirname(os.path.realpath(__file__)))+'/predictions_test/result_raw_deep/'
 patch_size = (total_window_size,total_window_size)
 
 num_images = 214
@@ -88,7 +84,7 @@ print("Fetching some atoms")
 patches = np.asarray(patches)
 n_atoms = int(400/total_window_size)**2
 print("Num atoms: "+str(n_atoms))
-dico = MiniBatchDictionaryLearning(n_atoms)
+dico = MiniBatchDictionaryLearning(2)
 patches = np.asarray(patches)
 #patches in which format?
 V = dico.fit(patches).components_

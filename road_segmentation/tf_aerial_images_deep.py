@@ -38,6 +38,8 @@ TRAINING_SIZE = 100 #114
 TEST_START_ID = 1 
 TEST_SIZE = 50
 
+VALIDATION_N_PATCHES = 3000    # if 0, no validation is being done
+
 init_type = 'xavier'
 
 LOGGING = False
@@ -301,6 +303,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     print ('Number of data points per class: c0 = ' + str(c0) + ' c1 = ' + str(c1))
 
 
+
     # This is where training samples and labels are fed to the graph.
     # These placeholder nodes will be fed a batch of training data at each
     # training step using the {feed_dict} argument to the Run() call below.
@@ -309,6 +312,13 @@ def main(argv=None):  # pylint: disable=unused-argument
         shape=(BATCH_SIZE, CONTEXT_PATCH, CONTEXT_PATCH, NUM_CHANNELS))
     train_labels_node = tf.placeholder(tf.float32,
                                        shape=(BATCH_SIZE, NUM_LABELS))
+
+    if VALIDATION_N_PATCHES > 0:
+        validation_data_node = tf.placeholder(
+            tf.float32,
+            shape=(VALIDATION_N_PATCHES, CONTEXT_PATCH, CONTEXT_PATCH, NUM_CHANNELS))
+        validation_labels_node = tf.placeholder(tf.float32,
+                                           shape=(VALIDATION_N_PATCHES, NUM_LABELS))
 
 
     # The variables below hold all the trainable weights. They are passed an
@@ -364,39 +374,37 @@ def main(argv=None):  # pylint: disable=unused-argument
 
  
     elif init_type == 'xavier': 
-        conv1_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
+        conv1_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
         conv1_weights = tf.Variable( conv1_weights_init(shape=[3, 3, NUM_CHANNELS, 64]), name='conv1_weights')
         conv1_biases = tf.Variable(tf.constant(0.001, shape=[64]), name='conv1_biases')
 
-        conv2_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
+        conv2_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
         conv2_weights = tf.Variable( conv2_weights_init(shape=[3, 3, 64, 128]), name='conv2_weights')
         conv2_biases = tf.Variable(tf.constant(0.001, shape=[128]), name='conv2_biases')
 
-        conv3_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
+        conv3_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
         conv3_weights = tf.Variable( conv3_weights_init(shape=[3, 3, 128, 256]), name='conv3_weights')
         conv3_biases = tf.Variable(tf.constant(0.01, shape=[256]), name='conv3_biases')
 
-        conv4_weights_init = tf.contrib.layers.xavier_initializer_conv2d()
-        conv4_weights = tf.Variable( conv4_weights_init(shape=[3,3,256,512]), name='conv4_weights')
+        conv4_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv4_weights = tf.Variable( conv4_weights_init(shape=[3, 3, 256,512]), name='conv4_weights')
         conv4_biases = tf.Variable(tf.constant(0.01,shape=[512]), name='conv4_biases')
 
 
-        fc1_weights_init = tf.contrib.layers.xavier_initializer()
+        fc1_weights_init = tf.contrib.layers.xavier_initializer(uniform=False)
         fc1_weights = tf.Variable(  fc1_weights_init(shape=[FC1_WIDTH, 2048]), name='fc1_weights')
         fc1_biases = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc1_biases')
 
-        fc2_weights_init = tf.contrib.layers.xavier_initializer()
+        fc2_weights_init = tf.contrib.layers.xavier_initializer(uniform=False)
         fc2_weights = tf.Variable( fc2_weights_init(shape=[2048, 2048]), name='fc2_weights')
         fc2_biases  = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc_biases')
  
-        fc3_weights_init = tf.contrib.layers.xavier_initializer()
+        fc3_weights_init = tf.contrib.layers.xavier_initializer(uniform=False)
         fc3_weights = tf.Variable( fc2_weights_init(shape=[2048, NUM_LABELS]), name='fc3_weights')
         fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
     else: 
         print('You have to specify some init_type')
        
-
-
 
 
 
@@ -624,6 +632,20 @@ def main(argv=None):  # pylint: disable=unused-argument
     print("Number of variables in model: "+str(total_parameters))
 
 
+
+
+    # FOR VALIDATION
+    if VALIDATION_N_PATCHES > 0:
+        validation_logits = model(validation_data_node) 
+        validation_pred = tf.nn.softmax(model(validation_data_node))
+        validation_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
+            logits=validation_logits, labels=validation_labels_node))
+        validation_loss += 5e-4 * regularizers
+
+
+
+
+
     img_prediction = None
     #tf.get_default_graph().finalize()
     # Create a local session to run this computation.
@@ -662,11 +684,10 @@ def main(argv=None):  # pylint: disable=unused-argument
                 img = mpimg.imread(image_filename)
 
                 # predict label
-                #img_prediction = get_prediction(img)
                 cropped = img_crop_context(img, IMG_PATCH_SIZE, IMG_PATCH_SIZE,CONTEXT_ADDITIVE_FACTOR,sub_mean=True)
                 cropped = np.asarray(cropped)
 
-                #data_node = tf.constant(cropped)
+
                 output = tf.nn.softmax(model(predict_data_node))
                 output_prediction = s.run(output, feed_dict={predict_data_node: cropped})
                 img_prediction = label_to_img(img.shape[0], img.shape[1], IMG_PATCH_SIZE, IMG_PATCH_SIZE, output_prediction)
@@ -712,35 +733,25 @@ def main(argv=None):  # pylint: disable=unused-argument
 
             for iepoch in range(num_epochs):
 
+
+                # VALIDATION SET
+                validation_idx = np.random.permutation(train_size)[:VALIDATION_N_PATCHES]
+
+
+
                 # Permute training indices
                 perm_indices = np.random.permutation(train_size)
-                # perm_road_idx = np.random.permutation(range(0,class_road_size))[:min_c]
-                # perm_back_idx = np.random.permutation(range(class_road_size, class_road_size + class_back_size))[:min_c]
-                # perm_indices_all = np.concatenate([perm_road_idx, perm_back_idx], axis=0)
-                # np.random.shuffle(perm_indices_all)
-                # if len(perm_indices) != len(perm_indices_all):
-                #     print('ERROR: these two should be the same!')
-                #     print('  ', len(perm_indices))
-                #     print('  ', len(perm_indices_all))
 
                 for step in range (int(train_size / BATCH_SIZE)):
                     offset = (step * BATCH_SIZE) % (train_size - BATCH_SIZE)
                     
                     batch_indices = perm_indices[offset:(offset + BATCH_SIZE)]
-                    #batch_indices_new = perm_indices_all[offset:(offset + BATCH_SIZE)]
                     
 
                     # Compute the offset of the current minibatch in the data.
                     # Note that we could use better randomization across epochs.
                     batch_data = train_data[batch_indices, :, :, :]
                     batch_labels = train_labels[batch_indices]
-                    #batch_data_new = train_data_all[batch_indices_new, :, :, :]
-                    #batch_labels_new = train_labels_all[batch_indices_new]
-
-                    # plt.imshow(batch_data_new[4,:,:,:])
-                    # plt.title('Road' if batch_labels_new[4,0]==1  else 'Background')
-                    # plt.show()
-
 
                     # This dictionary maps the batch data (as a numpy array) to the
                     # node in the graph is should be fed to.
@@ -756,22 +767,40 @@ def main(argv=None):  # pylint: disable=unused-argument
                             summary_writer.add_summary(summary_str, step)
                             summary_writer.flush()
                         else:
-                            _, l, lr, predictions = s.run(
-                                [ optimizer, loss, learning_rate, train_prediction],
-                                feed_dict=feed_dict)
+                            if VALIDATION_N_PATCHES > 0:
+                                feed_dict[validation_data_node] = train_data[validation_idx, :, :, :]
+                                feed_dict[validation_labels_node] = train_labels[validation_idx]
+                                validation_labels = train_labels[validation_idx]
+
+                                _, l, lr, predictions, validation_out, valid_loss = s.run(
+                                    [ optimizer, loss, learning_rate, train_prediction, 
+                                    validation_pred, validation_loss],
+                                    feed_dict=feed_dict)
+                            else:
+                                _, l, lr, predictions = s.run(
+                                    [ optimizer, loss, learning_rate, train_prediction],
+                                    feed_dict=feed_dict)
 
 
                         print ('Epoch %.2f' % (iepoch))
                         print ('Minibatch loss: %.3f, learning rate: %.6f' % (l, lr))
                         print ('Minibatch error: %.1f%%' % error_rate(predictions,
                                                                      batch_labels))
+                        if VALIDATION_N_PATCHES > 0:
+                            print ('Validation loss: %.3f' % (valid_loss))
+                            print ('Validation error: %.1f%%' % error_rate(validation_out,
+                                                                         validation_labels))
 
                         sys.stdout.flush()
                     else:
+                        
                         # Run the graph and fetch some of the nodes.
                         _, l, lr, predictions = s.run(
                             [optimizer, loss, learning_rate, train_prediction],
                             feed_dict=feed_dict)
+
+
+
 
                 # Save the variables to disk.
                 save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
