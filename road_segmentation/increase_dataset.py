@@ -83,9 +83,9 @@ if __name__ == '__main__':
     save_start_index = 1
 
     if MIRROR_ALL:
-        NEW_IDX_START = 300 - len(TO_REMOVE)
+        NEW_IDX_START = 3 * (100 - len(TO_REMOVE))
     else:
-        NEW_IDX_START = 200 - len(TO_REMOVE)
+        NEW_IDX_START = 2 * (100 - len(TO_REMOVE))
     ROTATION = 180
 
     # Handpicked diagonal roads to augment dataset even further
@@ -101,7 +101,7 @@ if __name__ == '__main__':
             new_imageid = "satImage_%.3d" % new_ix
             img2.save(out_data_dir+new_imageid+".png")
            
-            print ('Loading ' + label_image_filename)
+            print ('  Loading ' + label_image_filename)
             labelimg = Image.open(label_image_filename)
             labelimg2 = labelimg.rotate(ROTATION)
             label_new_ix = NEW_IDX_START + save_start_index
@@ -129,7 +129,7 @@ if __name__ == '__main__':
             new_imageid = "satImage_%.3d" % new_ix
             img2.save(out_data_dir+new_imageid+".png")
            
-            print ('Loading ' + label_image_filename)
+            print ('    Loading ' + label_image_filename)
             labelimg = Image.open(label_image_filename)
             labelimg2 = labelimg.rotate(ROTATION)
             label_new_ix = NEW_IDX_START + save_start_index
