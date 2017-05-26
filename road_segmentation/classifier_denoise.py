@@ -1,25 +1,18 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import tensorflow as tf
-from sklearn import datasets
 import matplotlib.image as mpimg
-from tensorflow.python.framework import ops
 import scipy.misc
 from sklearn import svm
 import math
-from sklearn import linear_model
 import pickle
-from sklearn.externals import joblib
 import os
-from sklearn.pipeline import Pipeline
-from sklearn.grid_search import GridSearchCV
-from sklearn.metrics import log_loss
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.externals import joblib
+from skimage import color, data, restoration
+from skimage.restoration import denoise_tv_chambolle
 from sklearn.neural_network import MLPClassifier
+from sklearn.model_selection import GridSearchCV
 
-TRAIN = False #If false, then predict
+TRAIN = True #If false, then predict
 PATCH_SIZE = 16
 CONTEXT_SIZE = 5 # means that for patch i,j we consider the square i-ps*3,j-ps*3 to i+ps*3, j+ps*3
 # Create graph
@@ -59,18 +52,15 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
     imgheight = img.shape[1]
     
     numblockwidth = int(imgwidth/block_size)
-
     numblockheight = int(imgheight/block_size)
 
     for i in range(1,numblockwidth-1):
         for j in range(1, numblockheight-1):
             pixel_i = i*block_size
             pixel_j = j*block_size
-
             if img[pixel_i,pixel_j] == 0: #if patch is black
                 #if not surrounded by 3 cut it
                 neighbors = np.zeros(8)
-
                 #black is 0
                 neighbors[0] = img[pixel_i-block_size,pixel_j]
                 neighbors[1] = img[pixel_i+block_size,pixel_j]
@@ -80,11 +70,9 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
                 neighbors[5] = img[pixel_i-block_size,pixel_j+block_size]
                 neighbors[6] = img[pixel_i+block_size,pixel_j-block_size]
                 neighbors[7] = img[pixel_i+block_size,pixel_j+block_size]
-
                 sum_val = np.sum(neighbors)
                 if(sum_val > black_threshold):
                     #repaint block
-                    print('Block repainted to BLACK!')
                     for xx in range(0,block_size):
                         for yy in range(0,block_size):
                             img[pixel_i+xx,pixel_j+yy] = 1.0
@@ -93,9 +81,7 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
             else: #white patch 1
                 #if not surrounded by 3 cut it
                 neighbors = np.zeros(8)
-
                 #black is 0
-
                 neighbors[0] = img[pixel_i-block_size,pixel_j]
                 neighbors[1] = img[pixel_i+block_size,pixel_j]
                 neighbors[2] = img[pixel_i,pixel_j-block_size]
@@ -109,7 +95,6 @@ def remove_filtering_neighbors(img,black_threshold, block_size = 16):
                 sum_val = np.sum(neighbors)
                 wh_threshold = NEIGHBOOR_TO_CONSIDER-black_threshold
                 if(sum_val < wh_threshold):
-                    print('  Block repainted to WHITE!')
                     for xx in range(0,block_size):
                         for yy in range(0,block_size):
                             img[pixel_i+xx,pixel_j+yy] = 0.0
@@ -157,6 +142,43 @@ def mean_img_per_patch(img,block_size):
 
     return newimg
 
+
+def pixel_high_change(img, i, j, threshold=4):
+    imgwidth = img.shape[0]
+    imgheight = img.shape[1]
+    print(imgwidth, imgheight)
+    if i > 0 and i < imgwidth - 1 and j > 0 and j < imgheight - 1:
+        currcolor = img[i,j]
+
+        #we can compute it
+        neighbors = np.zeros(8)
+
+        #black is 0
+        neighbors[0] = img[i-1,j]
+        neighbors[1] = img[i+1,j]
+        neighbors[2] = img[i,j-1]
+        neighbors[3] = img[i,j+1]
+        neighbors[4] = img[i-1,j-1]
+        neighbors[5] = img[i-1,j+1]
+        neighbors[6] = img[i+1,j-1]
+        neighbors[7] = img[i+1,j+1]
+        sumval = np.sum(neighbors)
+        if currcolor == 1: #white pixel
+            if sumval <= (8-threshold):
+                return ("White",True)
+            else:
+                return ("White",False)
+        else: #black pixel
+            if sumval >= threshold:
+                return ("Black",True)
+            else:
+                return ("Black",False)
+
+    else:
+        #We cannot compute the value for borders, assume borders are always fine, so return 8
+        return ("Border", False)
+
+
 if TRAIN:
     real_y = []
     train_x = []
@@ -196,16 +218,18 @@ if TRAIN:
                 train_x.append(flattened)
                 
 
-
-    #BEST PARAMETERS C=10, gamma = 0.1
+    #BEST PARAMETERS SVC C=10, gamma = 0.1
     train_x = np.asarray(train_x)
     real_y = np.asarray(real_y)
     D = train_x.shape[1]
     print("Finished loading images")
-    print("Computing Randomforest model...")
+    print("Computing model...")
     #rfc = svm.SVC(C=1,kernel='rbf')
     #rfc = RandomForestClassifier(n_estimators=1000,n_jobs=4)
-    rfc = MLPClassifier((512,512),alpha=0.01,epsilon=0.1,tol=1e-5)
+
+    tuned_parameters = [{'hidden_layer_sizes':[(50,50),(100,),(100,100)], 'activation':['logistic','relu'], 'alpha':[0.01,0.1],'tol':[1e-4,1e-5]}]
+    #clf = MLPClassifier((10,10),alpha=0.01,epsilon=0.1,tol=1e-4)
+    clf = GridSearchCV(MLPClassifier(),tuned_parameters,cv=5,scoring='precision')
 
 
     # gammas = np.array([0.1,0.01,0.001])
@@ -215,11 +239,11 @@ if TRAIN:
     # classifier.fit(train_x,real_y)
     # print("BEST PARAMETERS")
     # print(classifier.best_params_)
-    rfc.fit(train_x,real_y) 
-    print(rfc.get_params())
-    joblib.dump(rfc, 'rfcmodel214.pkl') 
+    clf.fit(train_x,real_y) 
+    print(clf.get_params())
+    joblib.dump(rfc, 'clfmodel214.pkl') 
 else:
-    clf = joblib.load('rfcmodel214.pkl')
+    clf = joblib.load('clfmodel214.pkl')
     #now predict
     predict_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result/"
     output_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_denoised/"
@@ -231,29 +255,44 @@ else:
         img = mpimg.imread(image_filename)
         img = rgb2gray(img)
 
-        newimg = mean_img_per_patch(img,PATCH_SIZE)
+
+        #tv denoise works best with inverse colors
+        img = 1 - img
+        tv_denoise = denoise_tv_chambolle(img, weight=10)
+        tv_denoise = 1 - tv_denoise
+        tv_denoise_bw = binarize(tv_denoise,16,0.5)
+
+        #now apply the classifier on patches that have high gradient, 
+        #This is: >= neighbors with different color than their own color
+
+       
+        newimg = mean_img_per_patch(tv_denoise_bw,PATCH_SIZE)
         numblockwidth = newimg.shape[0]
         numblockheight = newimg.shape[1]
         res = []
         for i in range(CONTEXT_SIZE,numblockwidth-CONTEXT_SIZE):
            for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
-                curr_x = newimg[i-CONTEXT_SIZE:i+CONTEXT_SIZE+1,j-CONTEXT_SIZE: j+CONTEXT_SIZE+1]
-                curr_x = curr_x.flatten()
-                full_context = CONTEXT_SIZE*2 +1
-                ind_to_remove = int(((full_context-1)/2)* (1+full_context))
-                #curr_x = np.delete(curr_x,ind_to_remove)
-                res.append(curr_x)
+                
+                typePatch, isHighChange = pixel_high_change(newimg,i,j,threshold=5)
+                if isHighChange:
+                    curr_x = newimg[i-CONTEXT_SIZE:i+CONTEXT_SIZE+1,j-CONTEXT_SIZE: j+CONTEXT_SIZE+1]
+                    curr_x = curr_x.flatten()
+                    full_context = CONTEXT_SIZE*2 +1
+                    ind_to_remove = int(((full_context-1)/2)* (1+full_context))
+                    #curr_x = np.delete(curr_x,ind_to_remove)
+                    res.append(curr_x)
 
         res = np.asarray(res)
         y_estim = clf.predict(res)
         it = 0
         for i in range(CONTEXT_SIZE,numblockwidth-CONTEXT_SIZE):
            for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
-            img[i*PATCH_SIZE:i*PATCH_SIZE+PATCH_SIZE,j*PATCH_SIZE:j*PATCH_SIZE+PATCH_SIZE] = y_estim[it]
-            it+=1
-        
-        img = binarize(img,PATCH_SIZE,0.5)
-        filtered = remove_filtering_neighbors(img,7,block_size=16)
+            typePatch, isHighChange = pixel_high_change(newimg,i,j,threshold=5)
+            if isHighChange:
+                tv_denoise_bw[i*PATCH_SIZE:i*PATCH_SIZE+PATCH_SIZE,j*PATCH_SIZE:j*PATCH_SIZE+PATCH_SIZE] = y_estim[it]
+                it+=1
+
+        filtered = remove_filtering_neighbors(tv_denoise_bw,7,block_size=16)
         #filtered = fill_rows_and_cols(filtered, missing_blocks=3)
         save_str = output_img_path+imageid+".png"
         scipy.misc.imsave(save_str,filtered)
