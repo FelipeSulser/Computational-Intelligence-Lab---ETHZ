@@ -12,8 +12,8 @@ import tensorflow as tf
 from scipy import ndimage
 import math
 
-DOUBLE_AUGMENT = [23,26,27,42,72,83,91]
-TO_REMOVE = [33]
+DOUBLE_AUGMENT = [1, 12, 23,26,27,42,72,83,91]
+TO_REMOVE = [33, 65, 76]
 MIRROR_ALL = True
 
 
