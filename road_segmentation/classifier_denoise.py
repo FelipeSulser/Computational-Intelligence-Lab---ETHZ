@@ -229,7 +229,7 @@ if TRAIN:
 
     tuned_parameters = [{'hidden_layer_sizes':[(50,50),(100,),(100,100)], 'activation':['logistic','relu'], 'alpha':[0.01,0.1],'tol':[1e-4,1e-5]}]
     #clf = MLPClassifier((10,10),alpha=0.01,epsilon=0.1,tol=1e-4)
-    clf = GridSearchCV(MLPClassifier(),tuned_parameters,cv=5,scoring='precision')
+    clf = GridSearchCV(MLPClassifier(),tuned_parameters,cv=5,scoring='precision',n_jobs=4)
 
 
     # gammas = np.array([0.1,0.01,0.001])
