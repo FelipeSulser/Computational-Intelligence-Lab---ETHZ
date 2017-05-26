@@ -1,9 +1,6 @@
 import os
-
 import numpy as np
-import matplotlib.image as mpimg
 from PIL import Image
-import matplotlib.pyplot as plt
 
 
 
