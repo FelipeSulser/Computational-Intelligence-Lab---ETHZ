@@ -39,7 +39,7 @@ def masks_to_submission(submission_filename, *image_filenames):
 
 
 if __name__ == '__main__':
-    submission_filename = '16_64_smooth_submission.csv'
+    submission_filename = 'deep_smooth_submission.csv'
     image_filenames = []
     for i in range(1, 51):
         image_filename = 'predictions_test/result_smooth_bin/prediction_' +  str(i) + '.png'

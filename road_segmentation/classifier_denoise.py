@@ -245,7 +245,7 @@ def runscript():
     else:
         clf = joblib.load('clfmodel214.pkl')
         #now predict
-        predict_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result/"
+        predict_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_azure_deep/result/"
         output_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_denoised/"
         print("Predicting patches")
         for xx in range(1,51):
