@@ -27,13 +27,13 @@ SEED = 66478  # Set to None for random seed.
 
 BATCH_SIZE = 32 # has to be dividable by 2 so we can split 2 classes to be equal sized
 #TODO change epoch number
-NUM_EPOCHS = 300
-RECORDING_STEP = 1000
+NUM_EPOCHS = 200
+RECORDING_STEP = 300
 DOWNSCALE = 1
 
 MODE = 'train' # 'train' or 'predict'
 STARTING_ID = 1 # 21, 41...
-TRAINING_SIZE = 100 #114
+TRAINING_SIZE = 50 #114
 
 TEST_START_ID = 1 
 TEST_SIZE = 50
@@ -52,22 +52,52 @@ CONTEXT_ADDITIVE_FACTOR = 24 #patch context increased by 2x2, so a 8x8 patch bec
 IMG_PATCH_SIZE = 16 #should be at least dividor of 608
 CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
 
-
-if CONTEXT_PATCH in range(40, 48+1):
-    FC1_WIDTH = 576
-elif CONTEXT_PATCH in range(50,64+1):
-    FC1_WIDTH = 8192#1024
-elif CONTEXT_PATCH == 32:
-    FC1_WIDTH = 256  
-else:
-    FC1_WIDTH = 42 # TODO 
-    print('Please set FC1_WIDTH!!')
+FC1_WIDTH = 32768
 
 
 tf.app.flags.DEFINE_string('train_dir', 'datafiles',
                            """Directory where to write event logs """
                            """and checkpoint.""")
 FLAGS = tf.app.flags.FLAGS
+
+
+def batch_norm(x, n_out, phase_train):
+    print('phase_train: ', phase_train)
+    if phase_train:
+        phase_train = tf.constant(True)
+    else:
+        phase_train = tf.constant(False)
+    """
+    Batch normalization on convolutional maps.
+    Ref.: http://stackoverflow.com/questions/33949786/how-could-i-use-batch-normalization-in-tensorflow
+    Args:
+        x:           Tensor, 4D BHWD input maps
+        n_out:       integer, depth of input maps
+        phase_train: boolean tf.Varialbe, true indicates training phase
+        scope:       string, variable scope
+    Return:
+        normed:      batch-normalized maps
+    """
+    with tf.variable_scope('bn'):
+        beta = tf.Variable(tf.constant(0.0, shape=[n_out]),
+                                     name='beta', trainable=True)
+        gamma = tf.Variable(tf.constant(1.0, shape=[n_out]),
+                                      name='gamma', trainable=True)
+        batch_mean, batch_var = tf.nn.moments(x, [0,1,2], name='moments')
+        ema = tf.train.ExponentialMovingAverage(decay=0.5)
+
+        def mean_var_with_update():
+            ema_apply_op = ema.apply([batch_mean, batch_var])
+            with tf.control_dependencies([ema_apply_op]):
+                return tf.identity(batch_mean), tf.identity(batch_var)
+
+        mean, var = tf.cond(phase_train,
+                            mean_var_with_update,
+                            lambda: (ema.average(batch_mean), ema.average(batch_var)))
+        normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3)
+    return normed
+
+
 
 
 # Extract patches from a given image
@@ -325,89 +355,145 @@ def main(argv=None):  # pylint: disable=unused-argument
     # initial value which will be assigned when when we call:
     # {tf.initialize_all_variables().run()}
 
-    if init_type=='normal':
-        conv1_weights = tf.Variable(
-            tf.truncated_normal([5, 5, NUM_CHANNELS, 64],  # 5x5 filter, depth 32.
-                                stddev=0.1,
-                                seed=SEED), name='conv1_weights')
-        conv1_biases = tf.Variable(tf.zeros([64]), name='conv1_biases')
-
-        conv2_weights = tf.Variable(
-            tf.truncated_normal([3, 3, 64, 128],
-                                stddev=0.1,
-                                seed=SEED), name='conv2_weights')
-        conv2_biases = tf.Variable(tf.zeros([128]), name='conv2_biases')
-
-        conv3_weights = tf.Variable(
-            tf.truncated_normal([3, 3, 128, 256],
-                                stddev=0.1,
-                                seed=SEED), name='conv3_weights')
-        conv3_biases = tf.Variable(tf.constant(0.01, shape=[256]), name='conv3_biases')
-
-        conv4_weights = tf.Variable(
-            tf.truncated_normal([3,3,256,512],
-                                stddev=0.1,
-                                seed=SEED), name='conv4_weights')
-        conv4_biases = tf.Variable(tf.constant(0.01,shape=[512]), name='conv4_biases')
-        
+    w_1 = 64   # with of the first chunk of layers
+    w_2 = 128
+    w_3 = 256
+    w_4 = 512
+    
+    if init_type == 'xavier': 
+        conv0_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv0_weights = tf.Variable( conv0_weights_init(shape=[7, 7, NUM_CHANNELS, 64]), name='conv0_weights')
+        conv0_biases = tf.Variable(tf.constant(0.001, shape=[64]), name='conv0_biases')
 
 
-        fc1_weights = tf.Variable(  # fully connected, depth 512.
-            #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
-            tf.truncated_normal([FC1_WIDTH, 2048],
-                                stddev=0.1,
-                                seed=SEED), name='fc1_weights')
-        fc1_biases = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc1_biases')
+        conv11_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv11_weights = tf.Variable( conv11_weights_init(shape=[3, 3, w_1, w_1]), name='conv11_weights')
+        conv11_biases = tf.Variable(tf.constant(0.001, shape=[w_1]), name='conv11_biases')
 
-        fc2_weights = tf.Variable(  # fully connected, depth 64.
-            tf.truncated_normal([2048, 2048],
-                                stddev=0.1,
-                                seed=SEED), name='fc2_weights')
-        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc2_biases')
+        conv12_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv12_weights = tf.Variable( conv12_weights_init(shape=[3, 3, w_1, w_1]), name='conv12_weights')
+        conv12_biases = tf.Variable(tf.constant(0.001, shape=[w_1]), name='conv12_biases')
 
-        fc3_weights = tf.Variable(  # fully connected, depth 64.
-            tf.truncated_normal([2048, NUM_LABELS],
-                                stddev=0.1,
-                                seed=SEED), name='fc3_weights')
-        fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
+        conv13_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv13_weights = tf.Variable( conv13_weights_init(shape=[3, 3, w_1, w_1]), name='conv13_weights')
+        conv13_biases = tf.Variable(tf.constant(0.01, shape=[w_1]), name='conv13_biases')
+
+        conv14_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv14_weights = tf.Variable( conv14_weights_init(shape=[3, 3, w_1, w_1]), name='conv14_weights')
+        conv14_biases = tf.Variable(tf.constant(0.01,shape=[w_1]), name='conv14_biases')
+
+        conv1_map_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv1_map_weights = tf.Variable( conv1_map_weights_init(shape=[1, 1, w_1, w_2]), name='conv1_map_weights')
+        conv1_map_biases = tf.Variable(tf.constant(0.01,shape=[w_2]), name='conv1_map_biases')
 
 
- 
-    elif init_type == 'xavier': 
-        conv1_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
-        conv1_weights = tf.Variable( conv1_weights_init(shape=[3, 3, NUM_CHANNELS, 64]), name='conv1_weights')
-        conv1_biases = tf.Variable(tf.constant(0.001, shape=[64]), name='conv1_biases')
+        conv21_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv21_weights = tf.Variable( conv21_weights_init(shape=[3, 3, w_2, w_2]), name='conv21_weights')
+        conv21_biases = tf.Variable(tf.constant(0.001, shape=[w_2]), name='conv21_biases')
 
-        conv2_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
-        conv2_weights = tf.Variable( conv2_weights_init(shape=[3, 3, 64, 128]), name='conv2_weights')
-        conv2_biases = tf.Variable(tf.constant(0.001, shape=[128]), name='conv2_biases')
+        conv22_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv22_weights = tf.Variable( conv22_weights_init(shape=[3, 3, w_2, w_2]), name='conv22_weights')
+        conv22_biases = tf.Variable(tf.constant(0.001, shape=[w_2]), name='conv22_biases')
 
-        conv3_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
-        conv3_weights = tf.Variable( conv3_weights_init(shape=[3, 3, 128, 256]), name='conv3_weights')
-        conv3_biases = tf.Variable(tf.constant(0.01, shape=[256]), name='conv3_biases')
+        conv23_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv23_weights = tf.Variable( conv23_weights_init(shape=[3, 3, w_2, w_2]), name='conv23_weights')
+        conv23_biases = tf.Variable(tf.constant(0.01, shape=[w_2]), name='conv23_biases')
 
-        conv4_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
-        conv4_weights = tf.Variable( conv4_weights_init(shape=[3, 3, 256,512]), name='conv4_weights')
-        conv4_biases = tf.Variable(tf.constant(0.01,shape=[512]), name='conv4_biases')
+        conv24_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv24_weights = tf.Variable( conv24_weights_init(shape=[3, 3, w_2, w_2]), name='conv24_weights')
+        conv24_biases = tf.Variable(tf.constant(0.01,shape=[w_2]), name='conv24_biases')
+
+        conv25_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv25_weights = tf.Variable( conv25_weights_init(shape=[3, 3, w_2, w_2]), name='conv25_weights')
+        conv25_biases = tf.Variable(tf.constant(0.01, shape=[w_2]), name='conv25_biases')
+
+        conv26_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv26_weights = tf.Variable( conv26_weights_init(shape=[3, 3, w_2, w_2]), name='conv26_weights')
+        conv26_biases = tf.Variable(tf.constant(0.01,shape=[w_2]), name='conv26_biases')
+
+        conv2_map_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv2_map_weights = tf.Variable( conv2_map_weights_init(shape=[1, 1, w_2, w_3]), name='conv2_map_weights')
+        conv2_map_biases = tf.Variable(tf.constant(0.01,shape=[w_3]), name='conv2_map_biases')
+
+
+        conv31_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv31_weights = tf.Variable( conv31_weights_init(shape=[3, 3, w_3, w_3]), name='conv31_weights')
+        conv31_biases = tf.Variable(tf.constant(0.001, shape=[w_3]), name='conv31_biases')
+
+        conv32_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv32_weights = tf.Variable( conv32_weights_init(shape=[3, 3, w_3, w_3]), name='conv32_weights')
+        conv32_biases = tf.Variable(tf.constant(0.001, shape=[w_3]), name='conv32_biases')
+
+        conv33_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv33_weights = tf.Variable( conv33_weights_init(shape=[3, 3, w_3, w_3]), name='conv33_weights')
+        conv33_biases = tf.Variable(tf.constant(0.01, shape=[w_3]), name='conv33_biases')
+
+        conv34_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv34_weights = tf.Variable( conv34_weights_init(shape=[3, 3, w_3, w_3]), name='conv34_weights')
+        conv34_biases = tf.Variable(tf.constant(0.01,shape=[w_3]), name='conv34_biases')
+
+        conv35_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv35_weights = tf.Variable( conv35_weights_init(shape=[3, 3, w_3, w_3]), name='conv35_weights')
+        conv35_biases = tf.Variable(tf.constant(0.01, shape=[w_3]), name='conv35_biases')
+
+        conv36_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv36_weights = tf.Variable( conv36_weights_init(shape=[3, 3, w_3, w_3]), name='conv36_weights')
+        conv36_biases = tf.Variable(tf.constant(0.01,shape=[w_3]), name='conv36_biases')
+
+        conv37_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv37_weights = tf.Variable( conv37_weights_init(shape=[3, 3, w_3, w_3]), name='conv37_weights')
+        conv37_biases = tf.Variable(tf.constant(0.01, shape=[w_3]), name='conv37_biases')
+
+        conv38_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv38_weights = tf.Variable( conv38_weights_init(shape=[3, 3, w_3, w_3]), name='conv38_weights')
+        conv38_biases = tf.Variable(tf.constant(0.01,shape=[w_3]), name='conv38_biases')
+
+        # conv39_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        # conv39_weights = tf.Variable( conv39_weights_init(shape=[3, 3, w_3, w_3]), name='conv39_weights')
+        # conv39_biases = tf.Variable(tf.constant(0.01, shape=[w_3]), name='conv39_biases')
+
+        # conv310_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        # conv310_weights = tf.Variable( conv310_weights_init(shape=[3, 3, w_3, w_3]), name='conv310_weights')
+        # conv310_biases = tf.Variable(tf.constant(0.01,shape=[w_3]), name='conv310_biases')
+
+        conv3_map_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv3_map_weights = tf.Variable( conv3_map_weights_init(shape=[1, 1, w_3, w_4]), name='conv3_map_weights')
+        conv3_map_biases = tf.Variable(tf.constant(0.01,shape=[w_4]), name='conv3_map_biases')
+
+
+        conv41_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv41_weights = tf.Variable( conv41_weights_init(shape=[3, 3, w_4, w_4]), name='conv41_weights')
+        conv41_biases = tf.Variable(tf.constant(0.001, shape=[w_4]), name='conv41_biases')
+
+        conv42_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv42_weights = tf.Variable( conv42_weights_init(shape=[3, 3, w_4, w_4]), name='conv42_weights')
+        conv42_biases = tf.Variable(tf.constant(0.001, shape=[w_4]), name='conv42_biases')
+
+        conv43_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv43_weights = tf.Variable( conv43_weights_init(shape=[3, 3, w_4, w_4]), name='conv43_weights')
+        conv43_biases = tf.Variable(tf.constant(0.01, shape=[w_4]), name='conv43_biases')
+
+        conv44_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv44_weights = tf.Variable( conv44_weights_init(shape=[3, 3, w_4, w_4]), name='conv44_weights')
+        conv44_biases = tf.Variable(tf.constant(0.01, shape=[w_4]), name='conv44_biases')
+
+        conv45_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv45_weights = tf.Variable( conv45_weights_init(shape=[3, 3, w_4, w_4]), name='conv45_weights')
+        conv45_biases = tf.Variable(tf.constant(0.01, shape=[w_4]), name='conv45_biases')
+
+        conv46_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
+        conv46_weights = tf.Variable( conv46_weights_init(shape=[3, 3, w_4, w_4]), name='conv46_weights')
+        conv46_biases = tf.Variable(tf.constant(0.01, shape=[w_4]), name='conv46_biases')
+
 
 
         fc1_weights_init = tf.contrib.layers.xavier_initializer(uniform=False)
-        fc1_weights = tf.Variable(  fc1_weights_init(shape=[FC1_WIDTH, 2048]), name='fc1_weights')
-        fc1_biases = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc1_biases')
+        fc1_weights = tf.Variable(  fc1_weights_init(shape=[FC1_WIDTH, NUM_LABELS]), name='fc1_weights')
+        fc1_biases = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc1_biases')
 
-        fc2_weights_init = tf.contrib.layers.xavier_initializer(uniform=False)
-        fc2_weights = tf.Variable( fc2_weights_init(shape=[2048, 2048]), name='fc2_weights')
-        fc2_biases  = tf.Variable(tf.constant(0.01, shape=[2048]), name='fc_biases')
- 
-        fc3_weights_init = tf.contrib.layers.xavier_initializer(uniform=False)
-        fc3_weights = tf.Variable( fc2_weights_init(shape=[2048, NUM_LABELS]), name='fc3_weights')
-        fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
     else: 
         print('You have to specify some init_type')
        
-
-
-
 
     # Make an image summary for 4d tensor image with index idx
     def get_image_summary(img, idx = 0):
@@ -453,88 +539,246 @@ def main(argv=None):  # pylint: disable=unused-argument
         # the same size as the input). Note that {strides} is a 4D array whose
         # shape matches the data layout: [image index, y, x, depth].
         data = tf.cast(data, dtype=tf.float32)
-        print(tf.shape(conv1_weights))
-        conv1 = tf.nn.conv2d(data,
-                            conv1_weights,
-                            strides=[1, 1, 1, 1], #changed to stride=4
+        # print(tf.shape(conv0_weights))
+        conv0 = tf.nn.conv2d(data,
+                            conv0_weights,
+                            strides=[1, 2, 2, 1], 
                             padding='SAME')
-        # Bias and rectified linear non-linearity.
-        relu1 = tf.nn.relu(tf.nn.bias_add(conv1, conv1_biases))
-      
-        # Max pooling. The kernel size spec {ksize} also follows the layout of
-        # the data. Here we have a pooling window of 2, and a stride of 2.
-        pool1 = tf.nn.max_pool(relu1,
-                              ksize=[1, 2, 2, 1],
-                              strides=[1, 2, 2, 1],
-                              padding='SAME')
+        relu0 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv0, CONTEXT_PATCH, train), conv0_biases))
 
-       
+        pool1 = tf.nn.max_pool(relu0,
+                                ksize=[1,2,2,1],
+                                strides=[1,2,2,1],
+                                padding='SAME')
 
-        conv2 = tf.nn.conv2d(pool1,
-                            conv2_weights,
+        conv11 = tf.nn.conv2d(pool1,
+                            conv11_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu2 = tf.nn.relu(tf.nn.bias_add(conv2, conv2_biases))
+        relu11 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv11, 64, train), conv11_biases))
        
-        pool2 = tf.nn.max_pool(relu2,
-                                ksize = [1,2,2,1],
-                                strides=[1,2,2,1],
-                                padding='SAME')
-
-        
-        conv3 = tf.nn.conv2d(pool2,
-                            conv3_weights,
+        conv12 = tf.nn.conv2d(relu11,
+                            conv12_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu3 = tf.nn.relu(tf.nn.bias_add(conv3,conv3_biases))
-        
-        pool3 = tf.nn.max_pool(relu3,
-                                ksize=[1,2,2,1],
-                                strides = [1,2,2,1],
-                                padding='SAME')
-        
-        conv4 = tf.nn.conv2d(pool3,
-                            conv4_weights,
+        relu12 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv12, 64, train),conv12_biases))
+
+        relu_add_1 = tf.nn.relu(tf.add(pool1, relu12))
+
+        conv13 = tf.nn.conv2d(relu_add_1,
+                            conv13_weights,
+                            strides=[1, 1, 1, 1],
+                            padding='SAME')
+        relu13 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv13, 64, train), conv13_biases))
+       
+        conv14 = tf.nn.conv2d(relu13,
+                            conv14_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu4 = tf.nn.relu(tf.nn.bias_add(conv4,conv4_biases))
+        relu14 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv14, 64, train),conv14_biases))
+        
+        relu_add_2_ = tf.nn.relu(tf.add(relu_add_1, relu14))
+        conv1_map = tf.nn.conv2d(relu_add_2_,
+                            conv1_map_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu_add_2 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv1_map, 128, train),conv1_map_biases))
+
+
+
+
+
+        conv21 = tf.nn.conv2d(relu_add_2,
+                            conv21_weights,
+                            strides=[1, 1, 1, 1],
+                            padding='SAME')
+        relu21 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv21, 128, train), conv21_biases))
        
-        pool4 = tf.nn.max_pool(relu4,
+        conv22 = tf.nn.conv2d(relu21,
+                            conv22_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu22 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv22, 128, train),conv22_biases))
+
+        relu_add_3 = tf.nn.relu(tf.add(relu_add_2, relu22))
+
+        conv23 = tf.nn.conv2d(relu_add_3,
+                            conv23_weights,
+                            strides=[1, 1, 1, 1],
+                            padding='SAME')
+        relu23 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv23, 128, train), conv23_biases))
+       
+        conv24 = tf.nn.conv2d(relu23,
+                            conv24_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu24 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv24, 128, train),conv24_biases))
+        
+        relu_add_4 = tf.nn.relu(tf.add(relu_add_3, relu24))
+
+        conv25 = tf.nn.conv2d(relu_add_4,
+                            conv25_weights,
+                            strides=[1, 1, 1, 1],
+                            padding='SAME')
+        relu25 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv25, 128, train), conv25_biases))
+       
+        conv26 = tf.nn.conv2d(relu25,
+                            conv26_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu26 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv26, 128, train),conv26_biases))
+        
+        relu_add_5_ = tf.nn.relu(tf.add(relu_add_4, relu26))
+        conv2_map = tf.nn.conv2d(relu_add_5_,
+                            conv2_map_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu_add_5 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv2_map, 256, train),conv2_map_biases))
+
+
+
+        conv31 = tf.nn.conv2d(relu_add_5,
+                            conv31_weights,
+                            strides=[1, 1, 1, 1],
+                            padding='SAME')
+        relu31 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv31, 256, train), conv31_biases))
+       
+        conv32 = tf.nn.conv2d(relu31,
+                            conv32_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu32 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv32, 256, train),conv32_biases))
+
+        relu_add_6 = tf.nn.relu(tf.add(relu_add_5, relu32))
+
+        conv33 = tf.nn.conv2d(relu_add_6,
+                            conv33_weights,
+                            strides=[1, 1, 1, 1],
+                            padding='SAME')
+        relu33 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv33, 256, train), conv33_biases))
+       
+        conv34 = tf.nn.conv2d(relu33,
+                            conv34_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu34 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv34, 256, train),conv34_biases))
+        
+        relu_add_7 = tf.nn.relu(tf.add(relu_add_6, relu34))
+
+        conv35 = tf.nn.conv2d(relu_add_7,
+                            conv35_weights,
+                            strides=[1, 1, 1, 1],
+                            padding='SAME')
+        relu35 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv35, 256, train), conv35_biases))
+       
+        conv36 = tf.nn.conv2d(relu35,
+                            conv36_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu36 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv36, 256, train),conv36_biases))
+        
+        relu_add_8 = tf.nn.relu(tf.add(relu_add_7, relu36))
+
+        conv37 = tf.nn.conv2d(relu_add_8,
+                            conv37_weights,
+                            strides=[1, 1, 1, 1],
+                            padding='SAME')
+        relu37 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv37, 256, train), conv37_biases))
+       
+        conv38 = tf.nn.conv2d(relu37,
+                            conv38_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu38 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv38, 256, train),conv38_biases))
+        
+        relu_add_9_ = tf.nn.relu(tf.add(relu_add_8, relu38))
+        conv3_map = tf.nn.conv2d(relu_add_9_,
+                            conv3_map_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu_add_9 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv3_map, 512, train),conv3_map_biases))
+
+
+
+        conv41 = tf.nn.conv2d(relu_add_9,
+                            conv41_weights,
+                            strides=[1, 1, 1, 1],
+                            padding='SAME')
+        relu41 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv41, 512, train), conv41_biases))
+       
+        conv42 = tf.nn.conv2d(relu41,
+                            conv42_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu42 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv42, 512, train),conv42_biases))
+
+        relu_add_10 = tf.nn.relu(tf.add(relu_add_9, relu42))
+
+        conv43 = tf.nn.conv2d(relu_add_10,
+                            conv43_weights,
+                            strides=[1, 1, 1, 1],
+                            padding='SAME')
+        relu43 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv43, 512, train), conv43_biases))
+       
+        conv44 = tf.nn.conv2d(relu43,
+                            conv44_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu44 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv44, 512, train),conv44_biases))
+        
+        relu_add_11 = tf.nn.relu(tf.add(relu_add_10, relu44))
+
+        conv45 = tf.nn.conv2d(relu_add_11,
+                            conv45_weights,
+                            strides=[1, 1, 1, 1],
+                            padding='SAME')
+        relu45 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv45, 512, train), conv45_biases))
+       
+        conv46 = tf.nn.conv2d(relu45,
+                            conv46_weights,
+                            strides=[1,1,1,1],
+                            padding='SAME')
+        relu46 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv46, 512, train),conv46_biases))
+        
+        relu_add_12 = tf.nn.relu(tf.add(relu_add_11, relu46))
+
+
+
+        pool2 = tf.nn.avg_pool(relu_add_12,
                                 ksize=[1,2,2,1],
                                 strides=[1,2,2,1],
                                 padding='SAME')
         
 
-        if train:
-            print("relu1: "+str(relu1.get_shape()))
-            print("Pool1: "+str(pool1.get_shape()))
-            print("relu2: "+str(relu2.get_shape()))
-            print("pool2: "+str(pool2.get_shape()))
-            print("relu3: "+str(relu3.get_shape()))
-            print("pool3: "+str(pool3.get_shape()))
-            print("relu4: "+str(relu4.get_shape()))
-            print("pool4: "+str(pool4.get_shape()))
+        # if train:
+        #     print("relu1: "+str(relu1.get_shape()))
+        #     print("Pool1: "+str(pool1.get_shape()))
+        #     print("relu2: "+str(relu2.get_shape()))
+        #     print("pool2: "+str(pool2.get_shape()))
+        #     print("relu3: "+str(relu3.get_shape()))
+        #     print("pool3: "+str(pool3.get_shape()))
+        #     print("relu4: "+str(relu4.get_shape()))
+        #     print("pool4: "+str(pool4.get_shape()))
 
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
         # fully connected layers.
-        relu_shape = pool4.get_shape().as_list()
+        print("pool1: "+str(pool2.get_shape()))
+        print("pool2: "+str(pool2.get_shape()))
+        relu_shape = pool2.get_shape().as_list()
         reshape = tf.reshape(
-            pool4,
+            pool2,
             [relu_shape[0], relu_shape[1] * relu_shape[2] * relu_shape[3]])
         # Fully connected layer. Note that the '+' operation automatically
         # broadcasts the biases.
         
-        hidden1 = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
-
-        hidden2 = tf.nn.relu(tf.matmul(hidden1,fc2_weights)+fc2_biases)
         
         # Add a 50% dropout during training only. Dropout also scales
         # activations such that no rescaling is needed at evaluation time.
-        if train:
-            hidden = tf.nn.dropout(hidden1, 0.5, seed=SEED)
-            hidden2 = tf.nn.dropout(hidden2,0.5,seed=SEED)
+        # if train:
+        #     hidden = tf.nn.dropout(hidden1, 0.5, seed=SEED)
+        #     hidden2 = tf.nn.dropout(hidden2,0.5,seed=SEED)
 
-        out = tf.matmul(hidden2, fc3_weights) + fc3_biases
+        out = tf.matmul(reshape, fc1_weights) + fc1_biases
 
 
         if train == True and LOGGING:
@@ -559,31 +803,17 @@ def main(argv=None):  # pylint: disable=unused-argument
         return out
 
     # Training computation: logits + cross-entropy loss.
-    
-    logits = model(train_data_node, MODE=='train') # BATCH_SIZE*NUM_LABELS
+    if MODE=='train':
+        tr = True
+    else:
+        tr = False
+    logits = model(train_data_node, tr) # BATCH_SIZE*NUM_LABELS
     # print 'logits = ' + str(logits.get_shape()) + ' train_labels_node = ' + str(train_labels_node.get_shape())
     loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
         logits=logits, labels=train_labels_node))
-    tf.summary.scalar('loss', loss)
 
-    all_params_node = [conv1_weights, conv1_biases, conv2_weights, conv2_biases, 
-                    conv3_weights, conv3_biases, conv4_weights, conv4_biases, 
-                    fc1_weights, fc1_biases, fc2_weights, fc2_biases, fc3_weights, fc3_biases]
-    all_params_names = ['conv1_weights', 'conv1_biases', 'conv2_weights', 'conv2_biases', 
-                    'conv3_weights','conv3_biases', 'conv4_weights','conv4_biases',
-                    'fc1_weights', 'fc1_biases', 'fc2_weights', 'fc2_biases', 'fc3_weights','fc3_biases']
-    all_grads_node = tf.gradients(loss, all_params_node)
-    all_grad_norms_node = []
-    for i in range(0, len(all_grads_node)):
-        norm_grad_i = tf.global_norm([all_grads_node[i]])
-        all_grad_norms_node.append(norm_grad_i)
-        tf.summary.scalar(all_params_names[i], norm_grad_i)
-    
     # L2 regularization for the fully connected parameters.
-
-    regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases) +
-                    tf.nn.l2_loss(fc2_weights) + tf.nn.l2_loss(fc2_biases) +
-                    tf.nn.l2_loss(fc3_weights) + tf.nn.l2_loss(fc3_biases))
+    regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases))
     # Add the regularization term to the loss.
     loss += 5e-4 * regularizers
 
@@ -592,7 +822,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     batch = tf.Variable(0, name='batch')
     # Decay once per epoch, using an exponential schedule starting at 0.01.
     learning_rate = tf.train.exponential_decay(
-        0.001,                # Base learning rate.
+        0.01,                # Base learning rate.
         batch * BATCH_SIZE,  # Current index into the dataset.
         train_size,          # Decay step.
         1.00,                # Decay rate.
