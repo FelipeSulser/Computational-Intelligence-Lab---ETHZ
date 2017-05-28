@@ -9,10 +9,11 @@ import os
 from sklearn.externals import joblib
 from skimage import color, data, restoration
 from skimage.restoration import denoise_tv_chambolle
+from skimage.restoration import denoise_wavelet
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import GridSearchCV
 
-TRAIN = True #If false, then predict
+TRAIN = False #If false, then predict
 PATCH_SIZE = 16
 CONTEXT_SIZE = 5 # means that for patch i,j we consider the square i-ps*3,j-ps*3 to i+ps*3, j+ps*3
 # Create graph
@@ -146,7 +147,6 @@ def mean_img_per_patch(img,block_size):
 def pixel_high_change(img, i, j, threshold=4):
     imgwidth = img.shape[0]
     imgheight = img.shape[1]
-    print(imgwidth, imgheight)
     if i > 0 and i < imgwidth - 1 and j > 0 and j < imgheight - 1:
         currcolor = img[i,j]
 
@@ -231,7 +231,6 @@ def runscript():
         #clf = MLPClassifier((10,10),alpha=0.01,epsilon=0.1,tol=1e-4)
         clf = GridSearchCV(MLPClassifier(),tuned_parameters,cv=5,scoring='precision')
 
-
         # gammas = np.array([0.1,0.01,0.001])
         # cs = np.array([10,1,0.1])
         # grid_dict = dict(gamma=gammas,C=cs)
@@ -245,8 +244,18 @@ def runscript():
     else:
         clf = joblib.load('clfmodel214.pkl')
         #now predict
-        predict_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_azure_deep/result/"
-        output_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_denoised/"
+
+        predict_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_azure_residual/result/"
+
+
+        tv_output_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_tv/"
+        wav_output_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_wavelet/"
+        if not os.path.isdir(tv_output_img_path):
+            os.mkdir(tv_output_img_path) 
+
+        if not os.path.isdir(wav_output_img_path):
+            os.mkdir(wav_output_img_path) 
+
         print("Predicting patches")
         for xx in range(1,51):
             imageid = "prediction_"+str(xx)
@@ -259,16 +268,45 @@ def runscript():
             #tv denoise works best with inverse colors
             img = 1 - img
             tv_denoise = denoise_tv_chambolle(img, weight=10)
+            wav_den = denoise_wavelet(img,sigma=3)
+            wav_den = 1-wav_den
+            wav_den = binarize(wav_den,16,0.5)
             tv_denoise = 1 - tv_denoise
             tv_denoise_bw = binarize(tv_denoise,16,0.5)
-
+            
+           
             #now apply the classifier on patches that have high gradient, 
             #This is: >= neighbors with different color than their own color
-
-           
+            newimgwav = mean_img_per_patch(wav_den,PATCH_SIZE)
             newimg = mean_img_per_patch(tv_denoise_bw,PATCH_SIZE)
             numblockwidth = newimg.shape[0]
             numblockheight = newimg.shape[1]
+            reswav = []
+            for i in range(CONTEXT_SIZE,numblockwidth-CONTEXT_SIZE):
+               for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
+                    
+                    typePatch, isHighChange = pixel_high_change(newimgwav,i,j,threshold=5)
+                    if isHighChange:
+                        curr_x = newimgwav[i-CONTEXT_SIZE:i+CONTEXT_SIZE+1,j-CONTEXT_SIZE: j+CONTEXT_SIZE+1]
+                        curr_x = curr_x.flatten()
+                        full_context = CONTEXT_SIZE*2 +1
+                        ind_to_remove = int(((full_context-1)/2)* (1+full_context))
+                        #curr_x = np.delete(curr_x,ind_to_remove)
+                        reswav.append(curr_x)
+
+            reswav = np.asarray(reswav)
+            y_estim_wav = clf.predict(reswav)
+            it = 0
+            for i in range(CONTEXT_SIZE,numblockwidth-CONTEXT_SIZE):
+               for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
+                typePatch, isHighChange = pixel_high_change(newimgwav,i,j,threshold=5)
+                if isHighChange:
+                    wav_den[i*PATCH_SIZE:i*PATCH_SIZE+PATCH_SIZE,j*PATCH_SIZE:j*PATCH_SIZE+PATCH_SIZE] = y_estim_wav[it]
+                    it+=1
+
+           
+            
+           
             res = []
             for i in range(CONTEXT_SIZE,numblockwidth-CONTEXT_SIZE):
                for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
@@ -293,9 +331,15 @@ def runscript():
                     it+=1
 
             filtered = remove_filtering_neighbors(tv_denoise_bw,7,block_size=16)
+
+            wav_fil = remove_filtering_neighbors(wav_den,7,block_size=16)
             #filtered = fill_rows_and_cols(filtered, missing_blocks=3)
-            save_str = output_img_path+imageid+".png"
+
+            save_str = tv_output_img_path+imageid+".png"
             scipy.misc.imsave(save_str,filtered)
+
+            wav_save_str = wav_output_img_path+imageid+".png"
+            scipy.misc.imsave(wav_save_str,tv_denoise)
 
 if __name__ == '__main__':
     runscript()

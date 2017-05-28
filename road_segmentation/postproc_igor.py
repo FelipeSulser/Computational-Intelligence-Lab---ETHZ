@@ -170,7 +170,7 @@ def fill_rows_and_cols(img, block_size=16, missing_blocks=3):
 
 def main(argv=None):  # pylint: disable=unused-argument
 
-    data_dir = 'predictions_test/result_azure_deep/result/'
+    data_dir = 'predictions_test/result_azure_residual/result/'
     out_dir = 'predictions_test/result_smooth_bin/'
 
     # Extract it into np arrays.

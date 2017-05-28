@@ -33,7 +33,7 @@ DOWNSCALE = 1
 
 MODE = 'train' # 'train' or 'predict'
 STARTING_ID = 1 # 21, 41...
-TRAINING_SIZE = 50 #114
+TRAINING_SIZE = 309 #114
 
 TEST_START_ID = 1 
 TEST_SIZE = 50
@@ -61,41 +61,16 @@ tf.app.flags.DEFINE_string('train_dir', 'datafiles',
 FLAGS = tf.app.flags.FLAGS
 
 
-def batch_norm(x, n_out, phase_train):
-    print('phase_train: ', phase_train)
+def batch_norm(x, n_out, phase_train, name_id):
     if phase_train:
         phase_train = tf.constant(True)
     else:
         phase_train = tf.constant(False)
-    """
-    Batch normalization on convolutional maps.
-    Ref.: http://stackoverflow.com/questions/33949786/how-could-i-use-batch-normalization-in-tensorflow
-    Args:
-        x:           Tensor, 4D BHWD input maps
-        n_out:       integer, depth of input maps
-        phase_train: boolean tf.Varialbe, true indicates training phase
-        scope:       string, variable scope
-    Return:
-        normed:      batch-normalized maps
-    """
-    with tf.variable_scope('bn'):
-        beta = tf.Variable(tf.constant(0.0, shape=[n_out]),
-                                     name='beta', trainable=True)
-        gamma = tf.Variable(tf.constant(1.0, shape=[n_out]),
-                                      name='gamma', trainable=True)
-        batch_mean, batch_var = tf.nn.moments(x, [0,1,2], name='moments')
-        ema = tf.train.ExponentialMovingAverage(decay=0.5)
-
-        def mean_var_with_update():
-            ema_apply_op = ema.apply([batch_mean, batch_var])
-            with tf.control_dependencies([ema_apply_op]):
-                return tf.identity(batch_mean), tf.identity(batch_var)
-
-        mean, var = tf.cond(phase_train,
-                            mean_var_with_update,
-                            lambda: (ema.average(batch_mean), ema.average(batch_var)))
-        normed = tf.nn.batch_normalization(x, mean, var, beta, gamma, 1e-3)
-    return normed
+    
+    return tf.contrib.layers.batch_norm(x, 
+                                          center=True, scale=True, 
+                                          is_training=phase_train,
+                                          scope=str(name_id)+'bn')
 
 
 
@@ -255,6 +230,7 @@ def label_to_img(imgwidth, imgheight, w, h, labels):
             # else:
             #     l = 0
             l = labels[idx][0]
+            #print('l: ',l)
             array_labels[i:i+h, j:j+w] = l
 
             idx = idx + 1
@@ -527,6 +503,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         data_node = tf.constant(data)
         output = tf.nn.softmax(model(data_node))
         output_prediction = s.run(output)
+        
         img_prediction = label_to_img(img.shape[0], img.shape[1], IMG_PATCH_SIZE, IMG_PATCH_SIZE, output_prediction)
 
         return img_prediction
@@ -543,25 +520,25 @@ def main(argv=None):  # pylint: disable=unused-argument
         conv0 = tf.nn.conv2d(data,
                             conv0_weights,
                             strides=[1, 2, 2, 1], 
-                            padding='SAME')
-        relu0 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv0, CONTEXT_PATCH, train), conv0_biases))
+                            padding='SAME', name='conv0')
+        relu0 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv0, 64, train, 1), conv0_biases))
 
         pool1 = tf.nn.max_pool(relu0,
                                 ksize=[1,2,2,1],
                                 strides=[1,2,2,1],
-                                padding='SAME')
+                                padding='SAME', name='pool1')
 
         conv11 = tf.nn.conv2d(pool1,
                             conv11_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu11 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv11, 64, train), conv11_biases))
+        relu11 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv11, 64, train, 2), conv11_biases))
        
         conv12 = tf.nn.conv2d(relu11,
                             conv12_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu12 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv12, 64, train),conv12_biases))
+        relu12 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv12, 64, train, 3),conv12_biases))
 
         relu_add_1 = tf.nn.relu(tf.add(pool1, relu12))
 
@@ -569,20 +546,20 @@ def main(argv=None):  # pylint: disable=unused-argument
                             conv13_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu13 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv13, 64, train), conv13_biases))
+        relu13 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv13, 64, train,4), conv13_biases))
        
         conv14 = tf.nn.conv2d(relu13,
                             conv14_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu14 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv14, 64, train),conv14_biases))
+        relu14 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv14, 64, train, 5),conv14_biases))
         
         relu_add_2_ = tf.nn.relu(tf.add(relu_add_1, relu14))
         conv1_map = tf.nn.conv2d(relu_add_2_,
                             conv1_map_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu_add_2 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv1_map, 128, train),conv1_map_biases))
+        relu_add_2 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv1_map, 128, train,6),conv1_map_biases))
 
 
 
@@ -592,13 +569,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                             conv21_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu21 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv21, 128, train), conv21_biases))
+        relu21 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv21, 128, train,7), conv21_biases))
        
         conv22 = tf.nn.conv2d(relu21,
                             conv22_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu22 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv22, 128, train),conv22_biases))
+        relu22 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv22, 128, train,8),conv22_biases))
 
         relu_add_3 = tf.nn.relu(tf.add(relu_add_2, relu22))
 
@@ -606,13 +583,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                             conv23_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu23 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv23, 128, train), conv23_biases))
+        relu23 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv23, 128, train,9), conv23_biases))
        
         conv24 = tf.nn.conv2d(relu23,
                             conv24_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu24 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv24, 128, train),conv24_biases))
+        relu24 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv24, 128, train,10),conv24_biases))
         
         relu_add_4 = tf.nn.relu(tf.add(relu_add_3, relu24))
 
@@ -620,20 +597,20 @@ def main(argv=None):  # pylint: disable=unused-argument
                             conv25_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu25 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv25, 128, train), conv25_biases))
+        relu25 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv25, 128, train,11), conv25_biases))
        
         conv26 = tf.nn.conv2d(relu25,
                             conv26_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu26 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv26, 128, train),conv26_biases))
+        relu26 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv26, 128, train,12),conv26_biases))
         
         relu_add_5_ = tf.nn.relu(tf.add(relu_add_4, relu26))
         conv2_map = tf.nn.conv2d(relu_add_5_,
                             conv2_map_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu_add_5 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv2_map, 256, train),conv2_map_biases))
+        relu_add_5 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv2_map, 256, train,13),conv2_map_biases))
 
 
 
@@ -641,13 +618,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                             conv31_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu31 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv31, 256, train), conv31_biases))
+        relu31 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv31, 256, train,14), conv31_biases))
        
         conv32 = tf.nn.conv2d(relu31,
                             conv32_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu32 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv32, 256, train),conv32_biases))
+        relu32 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv32, 256, train,15),conv32_biases))
 
         relu_add_6 = tf.nn.relu(tf.add(relu_add_5, relu32))
 
@@ -655,13 +632,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                             conv33_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu33 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv33, 256, train), conv33_biases))
+        relu33 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv33, 256, train,16), conv33_biases))
        
         conv34 = tf.nn.conv2d(relu33,
                             conv34_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu34 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv34, 256, train),conv34_biases))
+        relu34 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv34, 256, train,17),conv34_biases))
         
         relu_add_7 = tf.nn.relu(tf.add(relu_add_6, relu34))
 
@@ -669,13 +646,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                             conv35_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu35 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv35, 256, train), conv35_biases))
+        relu35 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv35, 256, train,18), conv35_biases))
        
         conv36 = tf.nn.conv2d(relu35,
                             conv36_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu36 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv36, 256, train),conv36_biases))
+        relu36 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv36, 256, train,19),conv36_biases))
         
         relu_add_8 = tf.nn.relu(tf.add(relu_add_7, relu36))
 
@@ -683,20 +660,20 @@ def main(argv=None):  # pylint: disable=unused-argument
                             conv37_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu37 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv37, 256, train), conv37_biases))
+        relu37 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv37, 256, train,20), conv37_biases))
        
         conv38 = tf.nn.conv2d(relu37,
                             conv38_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu38 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv38, 256, train),conv38_biases))
+        relu38 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv38, 256, train,21),conv38_biases))
         
         relu_add_9_ = tf.nn.relu(tf.add(relu_add_8, relu38))
         conv3_map = tf.nn.conv2d(relu_add_9_,
                             conv3_map_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu_add_9 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv3_map, 512, train),conv3_map_biases))
+        relu_add_9 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv3_map, 512, train,22),conv3_map_biases))
 
 
 
@@ -704,13 +681,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                             conv41_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu41 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv41, 512, train), conv41_biases))
+        relu41 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv41, 512, train,23), conv41_biases))
        
         conv42 = tf.nn.conv2d(relu41,
                             conv42_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu42 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv42, 512, train),conv42_biases))
+        relu42 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv42, 512, train,24),conv42_biases))
 
         relu_add_10 = tf.nn.relu(tf.add(relu_add_9, relu42))
 
@@ -718,13 +695,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                             conv43_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu43 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv43, 512, train), conv43_biases))
+        relu43 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv43, 512, train,25), conv43_biases))
        
         conv44 = tf.nn.conv2d(relu43,
                             conv44_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu44 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv44, 512, train),conv44_biases))
+        relu44 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv44, 512, train,26),conv44_biases))
         
         relu_add_11 = tf.nn.relu(tf.add(relu_add_10, relu44))
 
@@ -732,13 +709,13 @@ def main(argv=None):  # pylint: disable=unused-argument
                             conv45_weights,
                             strides=[1, 1, 1, 1],
                             padding='SAME')
-        relu45 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv45, 512, train), conv45_biases))
+        relu45 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv45, 512, train,27), conv45_biases))
        
         conv46 = tf.nn.conv2d(relu45,
                             conv46_weights,
                             strides=[1,1,1,1],
                             padding='SAME')
-        relu46 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv46, 512, train),conv46_biases))
+        relu46 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv46, 512, train,28),conv46_biases))
         
         relu_add_12 = tf.nn.relu(tf.add(relu_add_11, relu46))
 
@@ -749,16 +726,6 @@ def main(argv=None):  # pylint: disable=unused-argument
                                 strides=[1,2,2,1],
                                 padding='SAME')
         
-
-        # if train:
-        #     print("relu1: "+str(relu1.get_shape()))
-        #     print("Pool1: "+str(pool1.get_shape()))
-        #     print("relu2: "+str(relu2.get_shape()))
-        #     print("pool2: "+str(pool2.get_shape()))
-        #     print("relu3: "+str(relu3.get_shape()))
-        #     print("pool3: "+str(pool3.get_shape()))
-        #     print("relu4: "+str(relu4.get_shape()))
-        #     print("pool4: "+str(pool4.get_shape()))
 
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
         # fully connected layers.
@@ -813,9 +780,9 @@ def main(argv=None):  # pylint: disable=unused-argument
         logits=logits, labels=train_labels_node))
 
     # L2 regularization for the fully connected parameters.
-    regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases))
+    #regularizers = (tf.nn.l2_loss(fc1_weights) + tf.nn.l2_loss(fc1_biases))
     # Add the regularization term to the loss.
-    loss += 5e-4 * regularizers
+    #loss += 5e-4 * regularizers
 
     # Optimizer: set up a variable that's incremented once per batch and
     # controls the learning rate decay.
@@ -830,6 +797,11 @@ def main(argv=None):  # pylint: disable=unused-argument
     #learning_rate = 0.01
     tf.summary.scalar('learning_rate', learning_rate)
     
+
+    # Predictions for the minibatch, validation set and test set.
+    train_prediction = tf.nn.softmax(logits)
+
+
     #Momentum
     #optimizer = tf.train.MomentumOptimizer(learning_rate,
     #                                       momentum=0.2).minimize(loss,
@@ -839,17 +811,31 @@ def main(argv=None):  # pylint: disable=unused-argument
     # learning_rate: 1e-4 is very often used. ADAM chooses itsself a learning rate, 
     #               so tf.train.exponential_decay might not be a good idea
     # epsilon: 0.1 as recommended for imagenet
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, 
-            beta1= 0.9, beta2 = 0.999,epsilon=0.1).minimize(loss,global_step=batch)
+    
+    trainer = tf.train.AdamOptimizer(learning_rate=learning_rate, 
+                beta1= 0.9, beta2 = 0.999,epsilon=0.1)
+    optimizer = trainer.minimize(loss,global_step=batch)
 
 
-    # Predictions for the minibatch, validation set and test set.
-    train_prediction = tf.nn.softmax(logits)
+    vars_to_train = tf.trainable_variables()    # option-1
+    vars_for_bn = [v for v in tf.all_variables() if 'bnX/' in v.name]
+    vars_for_bn_names = [v.name for v in vars_for_bn]
+    print('BN VARS: ', vars_for_bn_names)
+    vars_to_train = list(set(vars_to_train).union(set(vars_for_bn)))
 
     # Add ops to save and restore all the variables.
     saver = tf.train.Saver()
 
+
+    #if MODE == 'train' and STARTING_ID == 1:
     init_op = tf.global_variables_initializer()
+    #     print('INIT ALL Variables!')
+    # else:
+    #     print('INIT all BUT BN Variables!')
+    #     vars_all = tf.all_variables()
+    #     vars_to_init = list(set(vars_all) - set(vars_to_train))
+    #     init_op = tf.initialize_variables(vars_to_init)
+
 
     total_parameters = 0
     for variable in tf.trainable_variables():
@@ -880,6 +866,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     #tf.get_default_graph().finalize()
     # Create a local session to run this computation.
     with tf.Session() as s:
+        s.run(init_op)
 
         if MODE == 'predict':
             # Restore variables from disk.
@@ -920,6 +907,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
                 output = tf.nn.softmax(model(predict_data_node))
                 output_prediction = s.run(output, feed_dict={predict_data_node: cropped})
+                
                 img_prediction = label_to_img(img.shape[0], img.shape[1], IMG_PATCH_SIZE, IMG_PATCH_SIZE, output_prediction)
 
 
@@ -942,7 +930,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
             if STARTING_ID == 1:
                 # we have no model yet, so lets init all variables
-                s.run(init_op)
+                
                 print ('Initialized!')
             else:
                 # we have the model already saved, so we dont need to init, but restore the existing model

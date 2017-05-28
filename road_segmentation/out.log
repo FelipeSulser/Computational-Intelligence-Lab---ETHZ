@@ -1,0 +1,181 @@
+I tensorflow/stream_executor/dso_loader.cc:135] successfully opened CUDA library libcublas.so.8.0 locally
+I tensorflow/stream_executor/dso_loader.cc:135] successfully opened CUDA library libcudnn.so.5 locally
+I tensorflow/stream_executor/dso_loader.cc:135] successfully opened CUDA library libcufft.so.8.0 locally
+I tensorflow/stream_executor/dso_loader.cc:135] successfully opened CUDA library libcuda.so.1 locally
+I tensorflow/stream_executor/dso_loader.cc:135] successfully opened CUDA library libcurand.so.8.0 locally
+WARNING:tensorflow:From tf_aerial_images_residual.py:843: all_variables (from tensorflow.python.ops.variables) is deprecated and will be removed after 2017-03-02.
+Instructions for updating:
+Please use tf.global_variables instead.
+Loading /home/igor/cil/road_segmentation/training/images_shuffled/satImage_001.png
+Loading /home/igor/cil/road_segmentation/training/images_shuffled/satImage_002.png
+Loading /home/igor/cil/road_segmentation/training/images_shuffled/satImage_003.png
+Loading /home/igor/cil/road_segmentation/training/images_shuffled/satImage_004.png
+Loading /home/igor/cil/road_segmentation/training/images_shuffled/satImage_005.png
+Loading /home/igor/cil/road_segmentation/training/images_shuffled/satImage_006.png
+Loading /home/igor/cil/road_segmentation/training/images_shuffled/satImage_007.png
+Loading /home/igor/cil/road_segmentation/training/images_shuffled/satImage_008.png
+Loading /home/igor/cil/road_segmentation/training/images_shuffled/satImage_009.png
+Loading /home/igor/cil/road_segmentation/training/images_shuffled/satImage_010.png
+Loading /home/igor/cil/road_segmentation/training/groundtruth_shuffled/satImage_001.png
+Loading /home/igor/cil/road_segmentation/training/groundtruth_shuffled/satImage_002.png
+Loading /home/igor/cil/road_segmentation/training/groundtruth_shuffled/satImage_003.png
+Loading /home/igor/cil/road_segmentation/training/groundtruth_shuffled/satImage_004.png
+Loading /home/igor/cil/road_segmentation/training/groundtruth_shuffled/satImage_005.png
+Loading /home/igor/cil/road_segmentation/training/groundtruth_shuffled/satImage_006.png
+Loading /home/igor/cil/road_segmentation/training/groundtruth_shuffled/satImage_007.png
+Loading /home/igor/cil/road_segmentation/training/groundtruth_shuffled/satImage_008.png
+Loading /home/igor/cil/road_segmentation/training/groundtruth_shuffled/satImage_009.png
+Loading /home/igor/cil/road_segmentation/training/groundtruth_shuffled/satImage_010.png
+Train data shape:  (6250, 64, 64, 3)
+Train labels shape:  (6250, 2)
+Number of data points per class: road = 1508 back = 4742
+Balancing training data...
+train_size:  3016
+Number of data points per class: c0 = 1508 c1 = 1508
+pool1: (32, 8, 8, 512)
+pool2: (32, 8, 8, 512)
+BN VARS:  ['1bnX/beta:0', '1bnX/gamma:0', '1bnX/1bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '1bnX/1bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '2bnX/beta:0', '2bnX/gamma:0', '2bnX/2bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '2bnX/2bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '3bnX/beta:0', '3bnX/gamma:0', '3bnX/3bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '3bnX/3bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '4bnX/beta:0', '4bnX/gamma:0', '4bnX/4bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '4bnX/4bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '5bnX/beta:0', '5bnX/gamma:0', '5bnX/5bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '5bnX/5bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '6bnX/beta:0', '6bnX/gamma:0', '6bnX/6bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '6bnX/6bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '7bnX/beta:0', '7bnX/gamma:0', '7bnX/7bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '7bnX/7bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '8bnX/beta:0', '8bnX/gamma:0', '8bnX/8bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '8bnX/8bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '9bnX/beta:0', '9bnX/gamma:0', '9bnX/9bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '9bnX/9bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '10bnX/beta:0', '10bnX/gamma:0', '10bnX/10bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '10bnX/10bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '11bnX/beta:0', '11bnX/gamma:0', '11bnX/11bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '11bnX/11bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '12bnX/beta:0', '12bnX/gamma:0', '12bnX/12bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '12bnX/12bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '13bnX/beta:0', '13bnX/gamma:0', '13bnX/13bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '13bnX/13bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '14bnX/beta:0', '14bnX/gamma:0', '14bnX/14bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '14bnX/14bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '15bnX/beta:0', '15bnX/gamma:0', '15bnX/15bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '15bnX/15bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '16bnX/beta:0', '16bnX/gamma:0', '16bnX/16bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '16bnX/16bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '17bnX/beta:0', '17bnX/gamma:0', '17bnX/17bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '17bnX/17bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '18bnX/beta:0', '18bnX/gamma:0', '18bnX/18bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '18bnX/18bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '19bnX/beta:0', '19bnX/gamma:0', '19bnX/19bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '19bnX/19bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '20bnX/beta:0', '20bnX/gamma:0', '20bnX/20bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '20bnX/20bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '21bnX/beta:0', '21bnX/gamma:0', '21bnX/21bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '21bnX/21bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '22bnX/beta:0', '22bnX/gamma:0', '22bnX/22bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '22bnX/22bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '23bnX/beta:0', '23bnX/gamma:0', '23bnX/23bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '23bnX/23bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '24bnX/beta:0', '24bnX/gamma:0', '24bnX/24bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '24bnX/24bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '25bnX/beta:0', '25bnX/gamma:0', '25bnX/25bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '25bnX/25bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '26bnX/beta:0', '26bnX/gamma:0', '26bnX/26bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '26bnX/26bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '27bnX/beta:0', '27bnX/gamma:0', '27bnX/27bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '27bnX/27bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '28bnX/beta:0', '28bnX/gamma:0', '28bnX/28bnX/moments/moments_1/mean/ExponentialMovingAverage:0', '28bnX/28bnX/moments/moments_1/variance/ExponentialMovingAverage:0', '1bnX/beta/Adam:0', '1bnX/beta/Adam_1:0', '1bnX/gamma/Adam:0', '1bnX/gamma/Adam_1:0', '2bnX/beta/Adam:0', '2bnX/beta/Adam_1:0', '2bnX/gamma/Adam:0', '2bnX/gamma/Adam_1:0', '3bnX/beta/Adam:0', '3bnX/beta/Adam_1:0', '3bnX/gamma/Adam:0', '3bnX/gamma/Adam_1:0', '4bnX/beta/Adam:0', '4bnX/beta/Adam_1:0', '4bnX/gamma/Adam:0', '4bnX/gamma/Adam_1:0', '5bnX/beta/Adam:0', '5bnX/beta/Adam_1:0', '5bnX/gamma/Adam:0', '5bnX/gamma/Adam_1:0', '6bnX/beta/Adam:0', '6bnX/beta/Adam_1:0', '6bnX/gamma/Adam:0', '6bnX/gamma/Adam_1:0', '7bnX/beta/Adam:0', '7bnX/beta/Adam_1:0', '7bnX/gamma/Adam:0', '7bnX/gamma/Adam_1:0', '8bnX/beta/Adam:0', '8bnX/beta/Adam_1:0', '8bnX/gamma/Adam:0', '8bnX/gamma/Adam_1:0', '9bnX/beta/Adam:0', '9bnX/beta/Adam_1:0', '9bnX/gamma/Adam:0', '9bnX/gamma/Adam_1:0', '10bnX/beta/Adam:0', '10bnX/beta/Adam_1:0', '10bnX/gamma/Adam:0', '10bnX/gamma/Adam_1:0', '11bnX/beta/Adam:0', '11bnX/beta/Adam_1:0', '11bnX/gamma/Adam:0', '11bnX/gamma/Adam_1:0', '12bnX/beta/Adam:0', '12bnX/beta/Adam_1:0', '12bnX/gamma/Adam:0', '12bnX/gamma/Adam_1:0', '13bnX/beta/Adam:0', '13bnX/beta/Adam_1:0', '13bnX/gamma/Adam:0', '13bnX/gamma/Adam_1:0', '14bnX/beta/Adam:0', '14bnX/beta/Adam_1:0', '14bnX/gamma/Adam:0', '14bnX/gamma/Adam_1:0', '15bnX/beta/Adam:0', '15bnX/beta/Adam_1:0', '15bnX/gamma/Adam:0', '15bnX/gamma/Adam_1:0', '16bnX/beta/Adam:0', '16bnX/beta/Adam_1:0', '16bnX/gamma/Adam:0', '16bnX/gamma/Adam_1:0', '17bnX/beta/Adam:0', '17bnX/beta/Adam_1:0', '17bnX/gamma/Adam:0', '17bnX/gamma/Adam_1:0', '18bnX/beta/Adam:0', '18bnX/beta/Adam_1:0', '18bnX/gamma/Adam:0', '18bnX/gamma/Adam_1:0', '19bnX/beta/Adam:0', '19bnX/beta/Adam_1:0', '19bnX/gamma/Adam:0', '19bnX/gamma/Adam_1:0', '20bnX/beta/Adam:0', '20bnX/beta/Adam_1:0', '20bnX/gamma/Adam:0', '20bnX/gamma/Adam_1:0', '21bnX/beta/Adam:0', '21bnX/beta/Adam_1:0', '21bnX/gamma/Adam:0', '21bnX/gamma/Adam_1:0', '22bnX/beta/Adam:0', '22bnX/beta/Adam_1:0', '22bnX/gamma/Adam:0', '22bnX/gamma/Adam_1:0', '23bnX/beta/Adam:0', '23bnX/beta/Adam_1:0', '23bnX/gamma/Adam:0', '23bnX/gamma/Adam_1:0', '24bnX/beta/Adam:0', '24bnX/beta/Adam_1:0', '24bnX/gamma/Adam:0', '24bnX/gamma/Adam_1:0', '25bnX/beta/Adam:0', '25bnX/beta/Adam_1:0', '25bnX/gamma/Adam:0', '25bnX/gamma/Adam_1:0', '26bnX/beta/Adam:0', '26bnX/beta/Adam_1:0', '26bnX/gamma/Adam:0', '26bnX/gamma/Adam_1:0', '27bnX/beta/Adam:0', '27bnX/beta/Adam_1:0', '27bnX/gamma/Adam:0', '27bnX/gamma/Adam_1:0', '28bnX/beta/Adam:0', '28bnX/beta/Adam_1:0', '28bnX/gamma/Adam:0', '28bnX/gamma/Adam_1:0']WARNING:tensorflow:From tf_aerial_images_residual.py:857: all_variables (from tensorflow.python.ops.variables) is deprecated and will be removed after 2017-03-02.
+Instructions for updating:
+Please use tf.global_variables instead.
+WARNING:tensorflow:From tf_aerial_images_residual.py:859: initialize_variables (from tensorflow.python.ops.variables) is deprecated and will be removed after 2017-03-02.
+Instructions for updating:
+Use `tf.variables_initializer` instead.
+W tensorflow/core/platform/cpu_feature_guard.cc:45] The TensorFlow library wasn't compiled to use SSE3 instructions, but these are available on your machine and could speed up CPU computations.
+W tensorflow/core/platform/cpu_feature_guard.cc:45] The TensorFlow library wasn't compiled to use SSE4.1 instructions, but these are available on your machine and could speed up CPU computations.
+W tensorflow/core/platform/cpu_feature_guard.cc:45] The TensorFlow library wasn't compiled to use SSE4.2 instructions, but these are available on your machine and could speed up CPU computations.
+W tensorflow/core/platform/cpu_feature_guard.cc:45] The TensorFlow library wasn't compiled to use AVX instructions, but these are available on your machine and could speed up CPU computations.
+W tensorflow/core/platform/cpu_feature_guard.cc:45] The TensorFlow library wasn't compiled to use AVX2 instructions, but these are available on your machine and could speed up CPU computations.
+W tensorflow/core/platform/cpu_feature_guard.cc:45] The TensorFlow library wasn't compiled to use FMA instructions, but these are available on your machine and could speed up CPU computations.
+I tensorflow/core/common_runtime/gpu/gpu_device.cc:885] Found device 0 with properties: 
+name: Tesla M60
+major: 5 minor: 2 memoryClockRate (GHz) 1.1775
+pciBusID 29b5:00:00.0
+Total memory: 7.93GiB
+Free memory: 7.86GiB
+I tensorflow/core/common_runtime/gpu/gpu_device.cc:906] DMA: 0 
+I tensorflow/core/common_runtime/gpu/gpu_device.cc:916] 0:   Y 
+I tensorflow/core/common_runtime/gpu/gpu_device.cc:975] Creating TensorFlow device (/gpu:0) -> (device: 0, name: Tesla M60, pci bus id: 29b5:00:00.0)
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+W tensorflow/core/framework/op_kernel.cc:993] Failed precondition: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+
+INIT all BUT BN Variables!
+Number of variables in model: 20174851
+Model restored.
+Running prediction on training set
+n_patches_in_test_img:  1444
+Prediction for img: 1
+pool1: (1444, 8, 8, 512)
+pool2: (1444, 8, 8, 512)
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/client/session.py", line 1022, in _do_call
+    return fn(*args)
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/client/session.py", line 1004, in _run_fn
+    status, run_metadata)
+  File "/usr/lib/python3.5/contextlib.py", line 66, in __exit__
+    next(self.gen)
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/framework/errors_impl.py", line 469, in raise_exception_on_not_ok_status
+    pywrap_tensorflow.TF_GetCode(status))
+tensorflow.python.framework.errors_impl.FailedPreconditionError: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "tf_aerial_images_residual.py", line 1056, in <module>
+    tf.app.run()
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/platform/app.py", line 44, in run
+    _sys.exit(main(_sys.argv[:1] + flags_passthrough))
+  File "tf_aerial_images_residual.py", line 932, in main
+    output_prediction = s.run([output], feed_dict={predict_data_node: cropped})
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/client/session.py", line 767, in run
+    run_metadata_ptr)
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/client/session.py", line 965, in _run
+    feed_dict_string, options, run_metadata)
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/client/session.py", line 1015, in _do_run
+    target_list, options, run_metadata)
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/client/session.py", line 1035, in _do_call
+    raise type(e)(node_def, op, message)
+tensorflow.python.framework.errors_impl.FailedPreconditionError: Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+
+Caused by op '9bnX_1/beta/read', defined at:
+  File "tf_aerial_images_residual.py", line 1056, in <module>
+    tf.app.run()
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/platform/app.py", line 44, in run
+    _sys.exit(main(_sys.argv[:1] + flags_passthrough))
+  File "tf_aerial_images_residual.py", line 931, in main
+    output = tf.nn.softmax(model(predict_data_node))
+  File "tf_aerial_images_residual.py", line 608, in model
+    relu23 = tf.nn.relu(tf.nn.bias_add(batch_norm(conv23, 128, train,9), conv23_biases))
+  File "tf_aerial_images_residual.py", line 82, in batch_norm
+    name='beta', trainable=True)
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/ops/variables.py", line 226, in __init__
+    expected_shape=expected_shape)
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/ops/variables.py", line 344, in _init_from_args
+    self._snapshot = array_ops.identity(self._variable, name="read")
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/ops/gen_array_ops.py", line 1490, in identity
+    result = _op_def_lib.apply_op("Identity", input=input, name=name)
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/framework/op_def_library.py", line 763, in apply_op
+    op_def=op_def)
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/framework/ops.py", line 2395, in create_op
+    original_op=self._default_original_op, op_def=op_def)
+  File "/usr/local/lib/python3.5/dist-packages/tensorflow/python/framework/ops.py", line 1264, in __init__
+    self._traceback = _extract_stack()
+
+FailedPreconditionError (see above for traceback): Attempting to use uninitialized value 9bnX_1/beta
+	 [[Node: 9bnX_1/beta/read = Identity[T=DT_FLOAT, _class=["loc:@9bnX_1/beta"], _device="/job:localhost/replica:0/task:0/gpu:0"](9bnX_1/beta)]]
+
