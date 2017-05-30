@@ -38,7 +38,8 @@ TRAINING_SIZE = 100 #114
 TEST_START_ID = 1 
 TEST_SIZE = 50
 
-VALIDATION_N_PATCHES = 0    # if 0, no validation is being done
+# if 0, no validation is being done
+VALIDATION_PERC_PATCHES = 10   # percantage of patches used for evaluation
 
 init_type = 'xavier'
 
@@ -281,7 +282,23 @@ def main(argv=None):  # pylint: disable=unused-argument
     np.random.shuffle(idx0)
     np.random.shuffle(idx1)
 
-    new_indices = idx0[0:min_c] + idx1[0:min_c]
+    validation_n_patches = 0
+
+    if VALIDATION_PERC_PATCHES > 0:
+        validation_n_patches = int(VALIDATION_PERC_PATCHES * min_c * 0.01)
+        print('validation_n_patches: ', validation_n_patches)
+        validation_idx0 = idx0[:validation_n_patches]
+        validation_idx1 = idx1[:validation_n_patches]
+        valid_indices = validation_idx0 + validation_idx1
+
+        idx0 = idx0[validation_n_patches:min_c]
+        idx1 = idx1[validation_n_patches:min_c]
+        new_indices = idx0 + idx1
+
+        validation_data = train_data[valid_indices,:,:,:]
+        validation_labels = train_labels[valid_indices]
+    else:
+        new_indices = idx0[0:min_c] + idx1[0:min_c]
     
     #train_data_all = train_data[new_indices_all,:,:,:]
     train_data = train_data[new_indices,:,:,:]
@@ -289,7 +306,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     #train_labels_all = train_labels[new_indices_all]
     train_labels = train_labels[new_indices]
 
-    train_size = 2 * min_c
+    train_size = len(new_indices)
     print('train_size: ', train_size)
 
 
@@ -308,17 +325,19 @@ def main(argv=None):  # pylint: disable=unused-argument
     # These placeholder nodes will be fed a batch of training data at each
     # training step using the {feed_dict} argument to the Run() call below.
     train_data_node = tf.placeholder(
-        tf.float32,
+        tf.float32, name='train_data_node',
         shape=(BATCH_SIZE, CONTEXT_PATCH, CONTEXT_PATCH, NUM_CHANNELS))
-    train_labels_node = tf.placeholder(tf.float32,
-                                       shape=(BATCH_SIZE, NUM_LABELS))
+    train_labels_node = tf.placeholder(
+        tf.float32, name='train_labels_node',
+        shape=(BATCH_SIZE, NUM_LABELS))
 
-    if VALIDATION_N_PATCHES > 0:
+    if validation_n_patches > 0:
         validation_data_node = tf.placeholder(
-            tf.float32,
-            shape=(VALIDATION_N_PATCHES, CONTEXT_PATCH, CONTEXT_PATCH, NUM_CHANNELS))
-        validation_labels_node = tf.placeholder(tf.float32,
-                                           shape=(VALIDATION_N_PATCHES, NUM_LABELS))
+            tf.float32, name='validation_data_node',
+            shape=(validation_n_patches*2, CONTEXT_PATCH, CONTEXT_PATCH, NUM_CHANNELS))
+        validation_labels_node = tf.placeholder(
+            tf.float32, name='validation_labels_node',
+            shape=(validation_n_patches*2, NUM_LABELS))
 
 
     # The variables below hold all the trainable weights. They are passed an
@@ -635,7 +654,7 @@ def main(argv=None):  # pylint: disable=unused-argument
 
 
     # FOR VALIDATION
-    if VALIDATION_N_PATCHES > 0:
+    if validation_n_patches > 0:
         validation_logits = model(validation_data_node) 
         validation_pred = tf.nn.softmax(model(validation_data_node))
         validation_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
@@ -733,12 +752,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
             for iepoch in range(num_epochs):
 
-
-                # VALIDATION SET
-                validation_idx = np.random.permutation(train_size)[:VALIDATION_N_PATCHES]
-
-
-
                 # Permute training indices
                 perm_indices = np.random.permutation(train_size)
 
@@ -767,10 +780,9 @@ def main(argv=None):  # pylint: disable=unused-argument
                             summary_writer.add_summary(summary_str, step)
                             summary_writer.flush()
                         else:
-                            if VALIDATION_N_PATCHES > 0:
-                                feed_dict[validation_data_node] = train_data[validation_idx, :, :, :]
-                                feed_dict[validation_labels_node] = train_labels[validation_idx]
-                                validation_labels = train_labels[validation_idx]
+                            if validation_n_patches > 0:
+                                feed_dict[validation_data_node] = validation_data
+                                feed_dict[validation_labels_node] = validation_labels
 
                                 _, l, lr, predictions, validation_out, valid_loss = s.run(
                                     [ optimizer, loss, learning_rate, train_prediction, 
@@ -786,7 +798,7 @@ def main(argv=None):  # pylint: disable=unused-argument
                         print ('Minibatch loss: %.3f, learning rate: %.6f' % (l, lr))
                         print ('Minibatch error: %.1f%%' % error_rate(predictions,
                                                                      batch_labels))
-                        if VALIDATION_N_PATCHES > 0:
+                        if validation_n_patches > 0:
                             print ('Validation loss: %.3f' % (valid_loss))
                             print ('Validation error: %.1f%%' % error_rate(validation_out,
                                                                          validation_labels))
