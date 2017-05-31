@@ -332,12 +332,15 @@ def main(argv=None):  # pylint: disable=unused-argument
         shape=(BATCH_SIZE, NUM_LABELS))
 
     if validation_n_patches > 0:
-        validation_data_node = tf.placeholder(
-            tf.float32, name='validation_data_node',
-            shape=(validation_n_patches*2, CONTEXT_PATCH, CONTEXT_PATCH, NUM_CHANNELS))
-        validation_labels_node = tf.placeholder(
-            tf.float32, name='validation_labels_node',
-            shape=(validation_n_patches*2, NUM_LABELS))
+        #validation_data_node = tf.placeholder(
+        #    tf.float32, name='validation_data_node',
+        #    shape=(validation_n_patches*2, CONTEXT_PATCH, CONTEXT_PATCH, NUM_CHANNELS))
+        #validation_labels_node = tf.placeholder(
+        #    tf.float32, name='validation_labels_node',
+        #    shape=(validation_n_patches*2, NUM_LABELS))
+        tf_valid_dataset = tf.constant(validation_data)
+        tf_valid_labels = tf.constant(validation_labels)
+
 
 
     # The variables below hold all the trainable weights. They are passed an
@@ -655,11 +658,12 @@ def main(argv=None):  # pylint: disable=unused-argument
 
     # FOR VALIDATION
     if validation_n_patches > 0:
-        validation_logits = model(validation_data_node) 
-        validation_pred = tf.nn.softmax(model(validation_data_node))
+        validation_logits = model(tf_valid_dataset) 
+        validation_pred = tf.nn.softmax(model(tf_valid_dataset))
         validation_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
-            logits=validation_logits, labels=validation_labels_node))
+            logits=validation_logits, labels=tf_valid_labels))
         validation_loss += 5e-4 * regularizers
+
 
 
 
