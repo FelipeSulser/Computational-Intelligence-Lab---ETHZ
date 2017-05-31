@@ -785,8 +785,8 @@ def main(argv=None):  # pylint: disable=unused-argument
                             summary_writer.flush()
                         else:
                             if validation_n_patches > 0:
-                                feed_dict[validation_data_node] = validation_data
-                                feed_dict[validation_labels_node] = validation_labels
+                                #feed_dict[validation_data_node] = validation_data
+                                #feed_dict[validation_labels_node] = validation_labels
 
                                 _, l, lr, predictions, validation_out, valid_loss = s.run(
                                     [ optimizer, loss, learning_rate, train_prediction, 
@@ -803,9 +803,10 @@ def main(argv=None):  # pylint: disable=unused-argument
                         print ('Minibatch error: %.1f%%' % error_rate(predictions,
                                                                      batch_labels))
                         if validation_n_patches > 0:
-                            print ('Validation loss: %.3f' % (valid_loss))
-                            print ('Validation error: %.1f%%' % error_rate(validation_out,
-                                                                         validation_labels))
+                            #print ('Validation loss: %.3f' % (valid_loss))
+                            #print ('Validation error: %.1f%%' % error_rate(validation_out,
+                            #                                             validation_labels))
+                            print("Accuracy ", error_rate(validation_pred.eval(),validation_labels))
 
                         sys.stdout.flush()
                     else:
