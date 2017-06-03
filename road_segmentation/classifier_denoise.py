@@ -9,13 +9,13 @@ import os
 from sklearn.externals import joblib
 from skimage import color, data, restoration
 from skimage.restoration import denoise_tv_chambolle
-#from skimage.restoration import denoise_wavelet
+from skimage.restoration import denoise_wavelet
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 import utilfuncs
 
-TRAIN = True #If false, then predict
+TRAIN = False #If false, then predict
 PATCH_SIZE = 16
 CONTEXT_SIZE = 5 # means that for patch i,j we consider the square i-ps*3,j-ps*3 to i+ps*3, j+ps*3
 # Create graph
@@ -121,16 +121,16 @@ def runscript():
 
             #tv denoise works best with inverse colors
             img = 1 - img
-            wav_den = img#denoise_wavelet(img,sigma=3)
+            wav_den = denoise_wavelet(img,sigma=3)
             wav_den = 1-wav_den
             wav_den = utilfuncs.binarize(wav_den,16,0.5)
            
             #now apply the classifier on patches that have high gradient, 
             #This is: >= neighbors with different color than their own color
             newimgwav = utilfuncs.mean_img_per_patch(wav_den,PATCH_SIZE)
-            newimg = utilfuncs.mean_img_per_patch(tv_denoise_bw,PATCH_SIZE)
-            numblockwidth = newimg.shape[0]
-            numblockheight = newimg.shape[1]
+           
+            numblockwidth = newimgwav.shape[0]
+            numblockheight = newimgwav.shape[1]
             reswav = []
             for i in range(CONTEXT_SIZE,numblockwidth-CONTEXT_SIZE):
                for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
