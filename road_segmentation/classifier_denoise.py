@@ -12,6 +12,7 @@ from skimage.restoration import denoise_tv_chambolle
 from skimage.restoration import denoise_wavelet
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import GridSearchCV
+import utilfuncs
 
 TRAIN = False #If false, then predict
 PATCH_SIZE = 16
@@ -22,161 +23,6 @@ total_pixel_length = PATCH_SIZE+2*CONTEXT_SIZE*PATCH_SIZE
 IMG_SIZE = 608
 NEIGHBOOR_TO_CONSIDER = 8
 
-
-def rgb2gray(rgb):
-    return np.dot(rgb[...,:3], [0.299, 0.587, 0.114])
-
-def binarize(img,block_size,threshold):
-    
-    imgwidth = img.shape[0]
-    imgheight = img.shape[1]
-    
-    numblockwidth = int(imgwidth/block_size)
-
-    numblockheight = int(imgheight/block_size)
-
-    for i in range(0,numblockwidth):
-        for j in range(0, numblockheight):
-            pixel_i = i*block_size
-            pixel_j = j*block_size
-            avg = np.mean(img[pixel_i:pixel_i+block_size,pixel_j:pixel_j+block_size])
-            if(avg > threshold):
-                img[pixel_i:pixel_i+block_size,pixel_j:pixel_j+block_size] = 1
-            else:
-                img[pixel_i:pixel_i+block_size,pixel_j:pixel_j+block_size] = 0
-
-    return img
-
-def remove_filtering_neighbors(img,black_threshold, block_size = 16):
-    #img is b&w array with 0 or 1
-    imgwidth = img.shape[0]
-    imgheight = img.shape[1]
-    
-    numblockwidth = int(imgwidth/block_size)
-    numblockheight = int(imgheight/block_size)
-
-    for i in range(1,numblockwidth-1):
-        for j in range(1, numblockheight-1):
-            pixel_i = i*block_size
-            pixel_j = j*block_size
-            if img[pixel_i,pixel_j] == 0: #if patch is black
-                #if not surrounded by 3 cut it
-                neighbors = np.zeros(8)
-                #black is 0
-                neighbors[0] = img[pixel_i-block_size,pixel_j]
-                neighbors[1] = img[pixel_i+block_size,pixel_j]
-                neighbors[2] = img[pixel_i,pixel_j-block_size]
-                neighbors[3] = img[pixel_i,pixel_j+block_size]
-                neighbors[4] = img[pixel_i-block_size,pixel_j-block_size]
-                neighbors[5] = img[pixel_i-block_size,pixel_j+block_size]
-                neighbors[6] = img[pixel_i+block_size,pixel_j-block_size]
-                neighbors[7] = img[pixel_i+block_size,pixel_j+block_size]
-                sum_val = np.sum(neighbors)
-                if(sum_val > black_threshold):
-                    #repaint block
-                    for xx in range(0,block_size):
-                        for yy in range(0,block_size):
-                            img[pixel_i+xx,pixel_j+yy] = 1.0
-            
-            
-            else: #white patch 1
-                #if not surrounded by 3 cut it
-                neighbors = np.zeros(8)
-                #black is 0
-                neighbors[0] = img[pixel_i-block_size,pixel_j]
-                neighbors[1] = img[pixel_i+block_size,pixel_j]
-                neighbors[2] = img[pixel_i,pixel_j-block_size]
-                neighbors[3] = img[pixel_i,pixel_j+block_size]
-                neighbors[4] = img[pixel_i-block_size,pixel_j-block_size]
-                neighbors[5] = img[pixel_i-block_size,pixel_j+block_size]
-                neighbors[6] = img[pixel_i+block_size,pixel_j-block_size]
-                neighbors[7] = img[pixel_i+block_size,pixel_j+block_size]
-
-
-                sum_val = np.sum(neighbors)
-                wh_threshold = NEIGHBOOR_TO_CONSIDER-black_threshold
-                if(sum_val < wh_threshold):
-                    for xx in range(0,block_size):
-                        for yy in range(0,block_size):
-                            img[pixel_i+xx,pixel_j+yy] = 0.0
-            
-
-
-    return img
-
-def fill_rows_and_cols(img, block_size=16, missing_blocks=3):
-    row_sums = np.sum(img, axis=1)
-    col_sums = np.sum(img, axis=0)
-
-    n_blocks_per_rc = math.ceil(IMG_SIZE / block_size)
-    rc_threshold = IMG_SIZE - (missing_blocks+1) * block_size
-
-
-    for row, row_sum in enumerate(row_sums):
-        if row_sum > rc_threshold:
-            # number of road patches is bigger than the minimum
-            img[row,:] = 1
-
-    for col, col_sum in enumerate(col_sums):
-        if col_sum > rc_threshold:
-            # number of road patches is bigger than the minimum
-            img[:,col] = 1
-    
-    return img
-
-def mean_img_per_patch(img,block_size):
-    
-    imgwidth = img.shape[0]
-    imgheight = img.shape[1]
-    
-    numblockwidth = int(imgwidth/block_size)
-
-    numblockheight = int(imgheight/block_size)
-    newimg = np.zeros((numblockwidth,numblockheight))
-    for i in range(0,numblockwidth):
-        for j in range(0, numblockheight):
-            pixel_i = i*block_size
-            pixel_j = j*block_size
-            avg = np.mean(img[pixel_i:pixel_i+block_size,pixel_j:pixel_j+block_size])
-            newimg[i,j] = avg
-            #img[pixel_i:pixel_i+block_size,pixel_j:pixel_j+block_size] = avg
-
-    return newimg
-
-
-def pixel_high_change(img, i, j, threshold=4):
-    imgwidth = img.shape[0]
-    imgheight = img.shape[1]
-    if i > 0 and i < imgwidth - 1 and j > 0 and j < imgheight - 1:
-        currcolor = img[i,j]
-
-        #we can compute it
-        neighbors = np.zeros(8)
-
-        #black is 0
-        neighbors[0] = img[i-1,j]
-        neighbors[1] = img[i+1,j]
-        neighbors[2] = img[i,j-1]
-        neighbors[3] = img[i,j+1]
-        neighbors[4] = img[i-1,j-1]
-        neighbors[5] = img[i-1,j+1]
-        neighbors[6] = img[i+1,j-1]
-        neighbors[7] = img[i+1,j+1]
-        sumval = np.sum(neighbors)
-        if currcolor == 1: #white pixel
-            if sumval <= (8-threshold):
-                return ("White",True)
-            else:
-                return ("White",False)
-        else: #black pixel
-            if sumval >= threshold:
-                return ("Black",True)
-            else:
-                return ("Black",False)
-
-    else:
-        #We cannot compute the value for borders, assume borders are always fine, so return 8
-        return ("Border", False)
 
 def runscript():
     if TRAIN:
@@ -245,7 +91,7 @@ def runscript():
         clf = joblib.load('clfmodel214.pkl')
         #now predict
 
-        predict_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_azure_residual/result/"
+        predict_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result/"
 
 
         tv_output_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_tv/"
@@ -262,7 +108,7 @@ def runscript():
             image_filename = predict_img_path+imageid+".png"
             print("Predicting "+image_filename)
             img = mpimg.imread(image_filename)
-            img = rgb2gray(img)
+            img = utilfuncs.rgb2gray(img)
 
 
             #tv denoise works best with inverse colors
@@ -270,22 +116,22 @@ def runscript():
             tv_denoise = denoise_tv_chambolle(img, weight=10)
             wav_den = denoise_wavelet(img,sigma=3)
             wav_den = 1-wav_den
-            wav_den = binarize(wav_den,16,0.5)
+            wav_den = utilfuncs.binarize(wav_den,16,0.5)
             tv_denoise = 1 - tv_denoise
-            tv_denoise_bw = binarize(tv_denoise,16,0.5)
+            tv_denoise_bw = utilfuncs.binarize(tv_denoise,16,0.5)
             
            
             #now apply the classifier on patches that have high gradient, 
             #This is: >= neighbors with different color than their own color
-            newimgwav = mean_img_per_patch(wav_den,PATCH_SIZE)
-            newimg = mean_img_per_patch(tv_denoise_bw,PATCH_SIZE)
+            newimgwav = utilfuncs.mean_img_per_patch(wav_den,PATCH_SIZE)
+            newimg = utilfuncs.mean_img_per_patch(tv_denoise_bw,PATCH_SIZE)
             numblockwidth = newimg.shape[0]
             numblockheight = newimg.shape[1]
             reswav = []
             for i in range(CONTEXT_SIZE,numblockwidth-CONTEXT_SIZE):
                for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
                     
-                    typePatch, isHighChange = pixel_high_change(newimgwav,i,j,threshold=5)
+                    typePatch, isHighChange = utilfuncs.pixel_high_change(newimgwav,i,j,threshold=5)
                     if isHighChange:
                         curr_x = newimgwav[i-CONTEXT_SIZE:i+CONTEXT_SIZE+1,j-CONTEXT_SIZE: j+CONTEXT_SIZE+1]
                         curr_x = curr_x.flatten()
@@ -299,7 +145,7 @@ def runscript():
             it = 0
             for i in range(CONTEXT_SIZE,numblockwidth-CONTEXT_SIZE):
                for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
-                typePatch, isHighChange = pixel_high_change(newimgwav,i,j,threshold=5)
+                typePatch, isHighChange = utilfuncs.pixel_high_change(newimgwav,i,j,threshold=5)
                 if isHighChange:
                     wav_den[i*PATCH_SIZE:i*PATCH_SIZE+PATCH_SIZE,j*PATCH_SIZE:j*PATCH_SIZE+PATCH_SIZE] = y_estim_wav[it]
                     it+=1
@@ -311,7 +157,7 @@ def runscript():
             for i in range(CONTEXT_SIZE,numblockwidth-CONTEXT_SIZE):
                for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
                     
-                    typePatch, isHighChange = pixel_high_change(newimg,i,j,threshold=5)
+                    typePatch, isHighChange = utilfuncs.pixel_high_change(newimg,i,j,threshold=5)
                     if isHighChange:
                         curr_x = newimg[i-CONTEXT_SIZE:i+CONTEXT_SIZE+1,j-CONTEXT_SIZE: j+CONTEXT_SIZE+1]
                         curr_x = curr_x.flatten()
@@ -325,14 +171,14 @@ def runscript():
             it = 0
             for i in range(CONTEXT_SIZE,numblockwidth-CONTEXT_SIZE):
                for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
-                typePatch, isHighChange = pixel_high_change(newimg,i,j,threshold=5)
+                typePatch, isHighChange = utilfuncs.pixel_high_change(newimg,i,j,threshold=5)
                 if isHighChange:
                     tv_denoise_bw[i*PATCH_SIZE:i*PATCH_SIZE+PATCH_SIZE,j*PATCH_SIZE:j*PATCH_SIZE+PATCH_SIZE] = y_estim[it]
                     it+=1
 
-            filtered = remove_filtering_neighbors(tv_denoise_bw,7,block_size=16)
+            filtered = utilfuncs.remove_filtering_neighbors(tv_denoise_bw,7,block_size=16)
 
-            wav_fil = remove_filtering_neighbors(wav_den,7,block_size=16)
+            wav_fil = utilfuncs.remove_filtering_neighbors(wav_den,7,block_size=16)
             #filtered = fill_rows_and_cols(filtered, missing_blocks=3)
 
             save_str = tv_output_img_path+imageid+".png"
