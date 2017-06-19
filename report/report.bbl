@@ -21,6 +21,10 @@
 \providecommand{\BIBdecl}{\relax}
 \BIBdecl
 
+\bibitem{keio}
+S.~Saito and Y.~Aoki, \emph{Building and road detection from large aerial
+  imagery}.\hskip 1em plus 0.5em minus 0.4em\relax SPIE, 2015, vol. 9405.
+
 \bibitem{mthesis}
 A.~E. Marcu, ``A local - global approach to semantic segmentation in aerial
   images,'' 2016, master Thesis.

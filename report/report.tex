@@ -28,8 +28,8 @@
   The use cases are numerous and we are going to focus on the simpler, but still very useful part, namely just the road
   segmentation. Our task is to classify the pixels as either road or background. To achieve our goal we have combined
   techniques proposed in several other papers and have adjusted these to suite our requirements and resources best as possible.  
-  The main part of our solution is convolution neural network. Beside it we apply the techniques for data augmentation,
-  feature selection and post-processing. The results we obtained with our solution are very close to the state-of-the-art
+  The main part of our solution is a convolution neural network (CNN). Beside it, we apply the techniques for data augmentation,
+  feature selection and post-processing. The results we obtained with our solution are close to the state-of-the-art
   solutions proposed in the other papers, but very often, our model is much simpler.
 \end{abstract}
 
@@ -40,9 +40,9 @@ represent the road and what pixels are not the road. Even though we would ideall
 granularity, we are proposing the approach which achieves the patch-wise granularity which is many cases good enough,
 especially in this project. This also simplifies the problem substantially since each patch has only value 0 or 1. \\
 \\
-We have implemented the solution which is combination of multiple similar other works on this topic (TODO: ref papers) 
+For the CNN, we have implemented the solution which is combination of multiple similar other works on this topic 
 and we have managed to achieve very similar results. The focus of our work was the design of the
-convolutional-neural-network (CNN) but we also invested a substantial amount of effort into denoising in order
+CNN but we also invested a substantial amount of effort into denoising in order
 to improve the results obtained by CNN. We would also like to mention that because of constrained resources
 we had to simplify some parts of our model.\\
 \\
@@ -57,18 +57,18 @@ that comes after that. Finally in \ref{sec:results} we discuss the results achie
 \subsection{Data Augmentation}
 \label{sec:data_aug}
 The original data set consisted of 100 labeled aerial images of road maps. As our approach consists of a
-deep neural network, we considered the given data not enough and thus we tried to augment it as much as possible.
-First thing we did, was to rotate all the images by 90 degrees and to mirror them. Beside the obvious increase
+deep neural network, we consider that the given data is not enough and thus we try to augment it to expand it further.
+For data augmentation, we first rotate all the images by 90 degrees and to mirror them. Beside the obvious increase
 in the training data size, this approach also makes our model more robust. Furthermore we have noticed that the 
-predictions on the diagonal roads were much worse than on the horizontal and vertical ones. This was obviously due to
-the lack of diagonal roads in our original data set. In order to fix this, we have picked 9 images with diagonal
-roads and highways which we rotated again by 180 and 270 degrees. Finally, we have noticed some inconsistencies
-in labeling of couple of images and we have decided to discard those from our training data. At the end our data set
-had 309 images in total.
+predictions on the diagonal roads were much worse than on the horizontal and vertical ones. This appears to be due to
+the lack of diagonal roads in our original data set. In order to fix this, we pick 9 images with diagonal
+roads and highways which we rotate again by 180 and 270 degrees. Finally, we have noticed some inconsistencies
+in labeling of couple of images and we have decided to discard those from our training data. At the end, our data set
+has 309 images in total.
 
 \subsection{Feature extraction}
 \label{sec:feature}
-In the baseline model we have split the image in patches of size $16\times16$ pixels. This provided granularity
+In the baseline model we split the image in patches of size $16\times16$ pixels. This provided granularity
 that was good enough, but it lacked the information about the surroundings. In order to address that we have come up
 with solution that we called \textit{added context}. Later, we have found the same approach in \cite{mthesis},
 \cite{Mnih2010} and \cite{eth_paper}. The approach is as following: split the image in $16\times16$ patches, then add the 
@@ -104,19 +104,35 @@ equalizing the number of patches in both classes, i.e. by randomly picking a lim
 
 \section{Models and Methodsg}
 \label{sec:model_and_methods}
+\subsection{Baseline Model}
+The baseline model works on batches of $16 \times 16$ patches.\\
+ Its configuration is as follows:
+ $IN(3, 16\times16)
+-C(32, 5\times5 /1) - MP(2 / 2) - C(64, 5\times5 /1) - MP(2 / 2)
+-FC(512)-FC(2)$
+Where:
+\begin{itemize}
+\item $IN(a,b\times c)$ -- input image of $a$ channels and size $b \times  c$
+\item $CONV(a,b\times c / d)$ -- Convolution layer with depth $a$, window size $b\times c$ and stride $d$
+\item $FC(a)$ -- Fully Connected layer of size $a$
+\item $MP(a / b)$ -- Max Pooling layer of size $a$ with stride $b$
+\end{itemize}
 
-\subsection{CNN Architecture}
+The weights of the network are L2 regularized and the optimizer used is the Momentum Optimizer  with an exponential decaying learning rate with a decay rate of 0.95 and starting at 0.01.
+Each convolutional layer is followed by a rectified linear unit ($RELU$) and the activation function in the Fully Connected layers are the identity function .
+In the end, the softmax function is applied to the output of the last Fully Connected layer. 
+\subsection{Improved CNN Architecture}
 The core of our work is the CNN design. We have got the main idea for the architecture
-of the network from (TODO: cite the paper from which we take the CNN arch.).
-Due to limited data and limited computing resources we had to reduce the network substantially. The
-reduced version can be described as follows: \\
+of the network from Alina Elena \cite{mthesis}. In this design, they connect both a VGG network \cite{vgg} and an AlexNet network \cite{alexnet} to create a dual stream network that takes as input the local patch to be predicted and the whole image as context.
+Our solution takes this network as inspiration, however it only takes the local information as input. This descision was taken due to limited data and also because empirically, the results obtained with it were good.
+
+Our CNN network can be described as follows: \\
 $IN(3, 64\times64)
--C(64, 3\times3 /2)-C(128, 3\times3 /2)
--C(256, 3\times3 /2)-C(512, 3\times3 /2)
--FC(2048)-FC(2048)-FC(2)$.\\
-IN stands for input, C for convolution and FC for fully-connected layers. First number in brackets represents
-depth of the layer and the rest represents either the input size or the convolution filter size and the pooling size.
-The output of the CNN was the softmax function for the two classes and the optimizer was Adam optimizer \cite{adam}.
+-C(64, 3\times3 /2) - MP(2 / 2) - C(128, 3\times3 /2) - MP(2 / 2)
+-C(256, 3\times3 /2) - MP(2 / 2) - C(512, 3\times3 /2) - MP(2 / 2)
+-FC(2048)-FC(2048)-FC(2)$\\
+
+Additionally all convolutional layers are followed by rectified linear units ($RELU$) layer. The output of the CNN is the softmax function for the two classes and we use the Adam optimizer \cite{adam}.
 
 
 \subsection{Error function}
@@ -178,6 +194,7 @@ report the mean (average value) along with a measure of variability
 
 \section{Summary}
 
+TODO
 The aim of a scientific paper is to convey the idea or discovery of
 the researcher to the minds of the readers. The associated software
 package provides the relevant details, which are often only briefly
