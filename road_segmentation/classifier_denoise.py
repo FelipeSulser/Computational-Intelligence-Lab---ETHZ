@@ -15,12 +15,29 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 import utilfuncs
 
+
+'''
+Denoise script that takes as input the raw images outputted by the CNN and performs the following steps:
+
+1)Denoise using wavelets
+2)Binarize to b&w
+3)Classify border* pixels using MLP
+
+Border pixels are pixels that have more than 5 neighbors (out of 8) with different colors.
+
+
+You can re-train the classifier by changing Train to True, this will perform a grid search cross validation 
+in order to find the best parameters for the MLP.
+
+
+For more information consult the attached paper (in pdf format) to this script.
+
+'''
+
 TRAIN = True #If false, then predict
 PATCH_SIZE = 16
 CONTEXT_SIZE = 5 # means that for patch i,j we consider the square i-ps*3,j-ps*3 to i+ps*3, j+ps*3
-# Create graph
 total_pixel_length = PATCH_SIZE+2*CONTEXT_SIZE*PATCH_SIZE
-#sess = tf.Session()
 IMG_SIZE = 608
 NEIGHBOOR_TO_CONSIDER = 8
 
@@ -95,6 +112,8 @@ def runscript():
         #store MLP model to file
         joblib.dump(clf, 'clfmodel214.pkl') 
     else:
+        #We are not training but denoising and classifying
+
         clf = joblib.load('clfmodel214.pkl')
 
         #load the normalization values
@@ -103,10 +122,13 @@ def runscript():
         f.close()
 
 
-        #now predict
+        #input images to denoise should be located in this directory
         predict_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result/"
+
+        #output will be written to this directory
         wav_output_img_path = (os.path.dirname(os.path.realpath(__file__)))+"/predictions_test/result_wavelet/"
 
+        #create directory if it does not exist
         if not os.path.isdir(wav_output_img_path):
             os.mkdir(wav_output_img_path) 
 
@@ -119,24 +141,32 @@ def runscript():
             img = utilfuncs.rgb2gray(img)
 
 
-            #tv denoise works best with inverse colors
+            #Inverse colors
             img = 1 - img
-            wav_den = img#denoise_wavelet(img,sigma=3)
+
+            #perform wavelet denoising
+            wav_den = denoise_wavelet(img,sigma=3)
+            #reverse colors back
             wav_den = 1-wav_den
+            
+            #Binarize the image to predict on it
             wav_den = utilfuncs.binarize(wav_den,16,0.5)
            
             #now apply the classifier on patches that have high gradient, 
-            #This is: >= neighbors with different color than their own color
+            #This is: > neighbors with different color than their own color
             newimgwav = utilfuncs.mean_img_per_patch(wav_den,PATCH_SIZE)
-            newimg = utilfuncs.mean_img_per_patch(tv_denoise_bw,PATCH_SIZE)
-            numblockwidth = newimg.shape[0]
-            numblockheight = newimg.shape[1]
+    
+            numblockwidth = newimgwav.shape[0]
+            numblockheight = newimgwav.shape[1]
             reswav = []
             for i in range(CONTEXT_SIZE,numblockwidth-CONTEXT_SIZE):
                for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
                     
                     typePatch, isHighChange = utilfuncs.pixel_high_change(newimgwav,i,j,threshold=5)
+
+                    #high change means the patch is a border patch (defined in the paper)
                     if isHighChange:
+                        #take its context
                         curr_x = newimgwav[i-CONTEXT_SIZE:i+CONTEXT_SIZE+1,j-CONTEXT_SIZE: j+CONTEXT_SIZE+1]
                         curr_x = curr_x.flatten()
                         full_context = CONTEXT_SIZE*2 +1
@@ -153,14 +183,14 @@ def runscript():
                for j in range(CONTEXT_SIZE,numblockheight-CONTEXT_SIZE):
                 typePatch, isHighChange = utilfuncs.pixel_high_change(newimgwav,i,j,threshold=5)
                 if isHighChange:
+                    #predict on the border patch
                     wav_den[i*PATCH_SIZE:i*PATCH_SIZE+PATCH_SIZE,j*PATCH_SIZE:j*PATCH_SIZE+PATCH_SIZE] = y_estim_wav[it]
                     it+=1
 
            
-
+            #change the color of a patch if 7 of its neighbors are of a different color
             wav_fil = utilfuncs.remove_filtering_neighbors(wav_den,7,block_size=16)
             #filtered = fill_rows_and_cols(filtered, missing_blocks=3)
-
 
             wav_save_str = wav_output_img_path+imageid+".png"
             scipy.misc.imsave(wav_save_str,wav_fil)
