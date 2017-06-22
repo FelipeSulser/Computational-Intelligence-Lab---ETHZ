@@ -105,10 +105,10 @@ The baseline model works on batches of $16 \times 16$ patches.\\
  Its configuration is as follows:
  $IN(3, 16\times16)
 -C(32, 5\times5 /1) - MP(2 / 2) - C(64, 5\times5 /1) - MP(2 / 2)
--FC(512)-FC(2)$
+-FC(512)-FC(2)$\\
 Where:
 \begin{itemize}
-\item $IN(a,b\times c)$ -- input image of $a$ channels and size $b \times  c$
+\item $IN(a,b\times c)$ -- Input image of $a$ channels and size $b \times  c$
 \item $CONV(a,b\times c / d)$ -- Convolution layer with depth $a$, window size $b\times c$ and stride $d$
 \item $FC(a)$ -- Fully Connected layer of size $a$
 \item $MP(a / b)$ -- Max Pooling layer of size $a$ with stride $b$
@@ -130,7 +130,7 @@ $IN(3, 64\times64)
 
 Additionally all convolutional layers are followed by rectified linear units ($RELU$) layer. The output of the CNN is the softmax function for the two classes and we use the Adam optimizer \cite{adam}.
 
-
+To reduce overfitting, we initialize the parameters of the network using xavier's initialization algorithm (TODO cite it) and we also use a dropout rate of 0.5 on all the Fully Connected layers during training.
 \subsection{Error function}
 Our CNN model reduces the log-loss, but for the evaluation we have used two other loss metrics. The first one was
 the classification error and it was used on the validation set that helped us find the right number of training epochs. 
@@ -151,13 +151,34 @@ how the validation error changes with the number of epochs. Beside these, there 
 In order to improve the output obtained from the CNN network, we perform a post-processing step that helps reduce the noise of the output image and correct some prediction errors. Errors may appear in the image due to the inconsistencies in the roads. As an example, objects that overlap with roads such as cars or trees might have a negative effect on the classification due to their difference in color and shape in contrast with the road. Furthermore, structures like rooftops might sometimes appear like roads.\\
 \subsubsection{Model Description}
 We propose an approach that first denoises the image and then performs a prediction on the patches. Given the output of the CNN as a grayscale image, we perform a denoising using wavelets. Following the denoising, we convert the image to binary representation (either black or white patches) and then we perform a prediction of the \textit{border patches} using a Multilayer Perceptron (MLP). We tried other models such as SVM (or SVC for classification) and Random Forest, however we obtained the best results with the MLP. Finally, the last step changes a patch's color if at least 7 of a patch's 8 neighbors have a different color, we change it because it is highly likely that it is a misclassified patch if 7 or more of its neighbors have a different color.
+
+In figure \ref{fig:denoising} we can see the outputs of each step. We start with the raw CNN output, we then apply the wavelet denoising, and afterwards we apply the MLP to the border patches only and fill the patch color with the neighbouring technique.
 \subsubsection{Wavelet denoising}
 For the denoising, we choose wavelets because the results obtained were smooth and appropiate for road images. The wavelets used are (TODO add default sklearn wavelets, gabor? not sure). Furthermore the denoising is done using a sigma of 3. 
 \subsubsection{Multilayer Perceptron classifier}
-The input datapoints of the classifier are patches surrounded with context. For the patches, we consider a window of $11\times11$ patches, with the current one to be classified centered. Also, we do not classify all the patches in the image, only the \textit{border patches}. A patch is considered a \textit{border patch} if 5 of its 8 immediate neighbors have a distinct color.\\
-For the structure of the classifier itself, the parameters were found using a cross validated grid search. We found out that (TODO add parameters that i forgot).
-\subsubsection{Parameters}
-For the wavelet denoising, 
+The input datapoints of the classifier are patches surrounded with context. For the patches, we consider a window of $11\times11$ patches, with the current one to be classified centered. Also, we do not classify all the patches in the image, only the \textit{border patches}. A patch is considered a \textit{border patch} if 5 of its 8 immediate neighbors have a distinct color. We only consider these patches because we observed that the other patches are generally correctly classified as the raw output of the CNN is not so noisy compared to the baseline's output.\\
+For the structure of the classifier itself, the parameters were found using a cross validated grid search. The best settings found are to use two hidden layers of size 50 each and to use the logistic activation function. Finally the training of the MLP was done on the 309 groundtruth images that we obtain using data augmentation techniques.
+
+\begin{figure}
+\centering
+\begin{subfigure}{.3\columnwidth}
+  \centering
+  \includegraphics[width=.8\linewidth]{output_cnn_raw.png}
+  \caption{Raw CNN output}
+\end{subfigure}%
+\begin{subfigure}{.3\columnwidth}
+  \centering
+  \includegraphics[width=.8\linewidth]{only_wav.png}
+  \caption{Wavelet denoising}
+\end{subfigure}
+\begin{subfigure}{.3\columnwidth}
+  \centering
+  \includegraphics[width=.8\linewidth]{final_res.png}
+  \caption{Wavelet + MLP + Neighbor}
+\end{subfigure}
+\caption{Post-Processing steps}
+\label{fig:denoising}
+\end{figure}
 
 
 \section{Results}

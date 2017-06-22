@@ -1,6 +1,28 @@
 """
-Baseline for CIL project on road segmentation.
-This simple baseline consits of a CNN with two convolutional+pooling layers with a soft-max loss
+CNN network for the road segmentation exercise in the CIL course at ETH Zürich Spring 2017
+
+Authors:
+
+- Igor Pesic
+- Felipe Sulser
+- Minesh Patel
+
+
+To train the network:
+    - Set MODE = train
+    - Change the batch size to your preference (default is 32)
+    - Set number of epochs to your preference (default is 300)
+    - Set CONTEXT_ADDITIVE_FACTOR to the size of the context you will like. For a value x, the window will be of size 2x + 1
+    - Set STARTING_ID to the first image to train on in your dataset
+    - Set TRAINING_SIZE to the number of images (consecutively numbered) your dataset has
+    - set init_type to xavier or normal
+    - Run it
+
+To predict:
+    - Set MODE = predict
+    - Set TEST_START_ID to the first id of the test data
+    - Set TEST_SIZE to the size of the test data
+    - Run it
 """
 import gc
 import gzip
@@ -26,29 +48,27 @@ NUM_LABELS = 2
 SEED = 66478  # Set to None for random seed.
 
 BATCH_SIZE = 32 # has to be dividable by 2 so we can split 2 classes to be equal sized
-#TODO change epoch number
 NUM_EPOCHS = 300
 RECORDING_STEP = 1000
 DOWNSCALE = 1
 
 MODE = 'train' # 'train' or 'predict'
 STARTING_ID = 1 # 21, 41...
-TRAINING_SIZE = 100 #114
+TRAINING_SIZE = 309 #114
 
 TEST_START_ID = 1 
 TEST_SIZE = 50
 
-# if 0, no validation is being done
-VALIDATION_PERC_PATCHES = 10   # percantage of patches used for evaluation
+# If 0, no validation is being done
+VALIDATION_PERC_PATCHES = 0   # percantage of patches used for evaluation
 
 init_type = 'xavier'
 
 LOGGING = False
-#CUDA_VISIBLE_DEVICES=""
+
 # Set image patch size in pixels
 # IMG_PATCH_SIZE should be a multiple of 4
-# image size should be an integer multiple of this number!
-
+# Image size should be an integer multiple of this number!
 CONTEXT_ADDITIVE_FACTOR = 24 #patch context increased by 2x2, so a 8x8 patch becomes a 16x15
 IMG_PATCH_SIZE = 16 #should be at least dividor of 608
 CONTEXT_PATCH = IMG_PATCH_SIZE+2*CONTEXT_ADDITIVE_FACTOR #in this case window is 16x16
@@ -61,7 +81,7 @@ elif CONTEXT_PATCH in range(50,64+1):
 elif CONTEXT_PATCH == 32:
     FC1_WIDTH = 256  
 else:
-    FC1_WIDTH = 42 # TODO 
+    FC1_WIDTH = 42 
     print('Please set FC1_WIDTH!!')
 
 
@@ -71,11 +91,21 @@ tf.app.flags.DEFINE_string('train_dir', 'datafiles',
 FLAGS = tf.app.flags.FLAGS
 
 
-# Extract patches from a given image
-# the patch itself should be (w+2*context_factor,h+2*context_factor)
-# but the base used for labeling should be (w,h)
-def img_crop_context(im, w, h,context_factor, sub_mean=False):
 
+def img_crop_context(im, w, h,context_factor, sub_mean=False):
+    '''
+    Function extracts patches from a given image.
+    The patch itshelf should be of size (w+2*context_factor, h + 2*context_factor)
+    but the base used for labeling (the central patch) should be (w,h)
+
+    Input:
+    im: An rgb image
+    w: Width of patch
+    h: Height of patch
+    context_factor: size of the context window, by default the used one is 64x64
+    sub_mean: Optional flag that allows to subtract the mean to each patch 
+    
+    '''
     padding_type = 'reflect'
     cf = context_factor
     is_2d = len(im.shape) < 3
@@ -254,7 +284,6 @@ def main(argv=None):  # pylint: disable=unused-argument
     train_data_filename = data_dir + 'images_shuffled/'
     train_labels_filename = data_dir + 'groundtruth_shuffled/' 
     test_set_dir = (os.path.dirname(os.path.realpath(__file__)))+'/test_set_images/'
-    # Extract it into numpy arrays.
 
     num_epochs = NUM_EPOCHS
 
@@ -347,6 +376,7 @@ def main(argv=None):  # pylint: disable=unused-argument
     # initial value which will be assigned when when we call:
     # {tf.initialize_all_variables().run()}
 
+    #if type normal, no xavier initialization algorithm
     if init_type=='normal':
         conv1_weights = tf.Variable(
             tf.truncated_normal([5, 5, NUM_CHANNELS, 64],  # 5x5 filter, depth 32.
@@ -394,7 +424,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         fc3_biases  = tf.Variable(tf.constant(0.01, shape=[NUM_LABELS]), name='fc3_biases')
 
 
- 
+    #use xavier initialization algorithm
     elif init_type == 'xavier': 
         conv1_weights_init = tf.contrib.layers.xavier_initializer_conv2d(uniform=False)
         conv1_weights = tf.Variable( conv1_weights_init(shape=[3, 3, NUM_CHANNELS, 64]), name='conv1_weights')
@@ -622,15 +652,6 @@ def main(argv=None):  # pylint: disable=unused-argument
     #learning_rate = 0.01
     tf.summary.scalar('learning_rate', learning_rate)
     
-    #Momentum
-    #optimizer = tf.train.MomentumOptimizer(learning_rate,
-    #                                       momentum=0.2).minimize(loss,
-    #                                                     global_step=batch)
-    
-    # AdamOptimizer - adaptative momentum
-    # learning_rate: 1e-4 is very often used. ADAM chooses itsself a learning rate, 
-    #               so tf.train.exponential_decay might not be a good idea
-    # epsilon: 0.1 as recommended for imagenet
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate, 
             beta1= 0.9, beta2 = 0.999,epsilon=0.1).minimize(loss,global_step=batch)
 
@@ -654,8 +675,6 @@ def main(argv=None):  # pylint: disable=unused-argument
     print("Number of variables in model: "+str(total_parameters))
 
 
-
-
     # FOR VALIDATION
     if validation_n_patches > 0:
         validation_logits = model(tf_valid_dataset) 
@@ -663,10 +682,6 @@ def main(argv=None):  # pylint: disable=unused-argument
         validation_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
             logits=validation_logits, labels=tf_valid_labels))
         validation_loss += 5e-4 * regularizers
-
-
-
-
 
 
     img_prediction = None
@@ -716,8 +731,6 @@ def main(argv=None):  # pylint: disable=unused-argument
                 img_prediction = label_to_img(img.shape[0], img.shape[1], IMG_PATCH_SIZE, IMG_PATCH_SIZE, output_prediction)
 
 
-
-
                 # overlay and save
                 oimg = make_img_overlay(img, img_prediction)
                 oimg.save(real_prediction + "overlay_" + str(i) + ".png")
@@ -749,7 +762,6 @@ def main(argv=None):  # pylint: disable=unused-argument
                                                         graph=s.graph)
             
             # Loop through training steps.
-
             print ('Total number of iterations = ' + str(int(num_epochs * train_size / BATCH_SIZE)))
 
 
@@ -761,7 +773,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
                 for step in range (int(train_size / BATCH_SIZE)):
                     offset = (step * BATCH_SIZE) % (train_size - BATCH_SIZE)
-                    
                     batch_indices = perm_indices[offset:(offset + BATCH_SIZE)]
                     
 
@@ -817,13 +828,9 @@ def main(argv=None):  # pylint: disable=unused-argument
                             feed_dict=feed_dict)
 
 
-
-
                 # Save the variables to disk.
                 save_path = saver.save(s, FLAGS.train_dir + "/model.ckpt")
                 print("Model saved in file: %s" % save_path)
-
-
 
          
 

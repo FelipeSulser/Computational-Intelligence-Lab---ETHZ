@@ -8,8 +8,8 @@ import pickle
 import os
 from sklearn.externals import joblib
 from skimage import color, data, restoration
-from skimage.restoration import denoise_tv_chambolle
-#from skimage.restoration import denoise_wavelet
+#from skimage.restoration import denoise_tv_chambolle
+from skimage.restoration import denoise_wavelet
 from sklearn.neural_network import MLPClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
