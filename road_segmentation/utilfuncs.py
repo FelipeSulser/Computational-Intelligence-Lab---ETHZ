@@ -1,5 +1,14 @@
-# Common functions used all over the code that are needed
+'''
 
+Authors:
+
+- Igor Pesic
+- Felipe Sulser
+- Minesh Patel
+
+Common functions used all over the code that are needed
+
+'''
 import numpy as np
 import matplotlib.image as mpimg
 

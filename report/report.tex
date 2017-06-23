@@ -8,7 +8,7 @@
 
 
 \begin{document}
-\title{CIL: Road Segmentation}
+\title{Computational Intelligence Lab Project:\\ Road Segmentation}
 
 \author{
   Igor Pesic\\
@@ -93,7 +93,7 @@ best score on the Kaggle competition\footnote{\url{inclass.kaggle.com/c/cil-road
 
 \subsection{Class balancing}
 \label{sec:balance}
-Because the dataset was very unbalanced (i.e. the number of background patches was ~$3\times$ bigger than the number of road patches, we had to balance the data so that both classes have a similar number of datapoints. Balancing the data helps reduce the bias towards a certain value in the form of a prior, which is due to the error minimization we are performing. We have done that by 
+Because the dataset was very unbalanced (i.e. the number of background patches was approximately three times bigger than the number of road patches, we had to balance the data so that both classes have a similar number of datapoints. Balancing the data helps reduce the bias towards a certain value in the form of a prior, which is due to the error minimization we are performing. We have done that by 
 equalizing the number of patches in both classes, i.e. by randomly picking a limited number of background patches.
 
 
@@ -183,43 +183,17 @@ For the structure of the classifier itself, the parameters were found using a cr
 
 \section{Results}
 \label{sec:results}
-
-TODO
-Organize the results section based on the sequence of table and
-figures you include. Prepare the tables and figures as soon as all
-the data are analyzed and arrange them in the sequence that best
-presents your findings in a logical way. A good strategy is to note,
-on a draft of each table or figure, the one or two key results you
-want to address in the text portion of the results.
-The information from the figures is
-summarized in Table~\ref{tab:fourier-wavelet}.
-
-\begin{table*}[htbp]
-  \centering
-  \begin{tabular}[c]{|l||l|l|l|}
-    \hline
-    Basis&Support&Suitable signals&Unsuitable signals\\
-    \hline
-    Fourier&global&sine like&localized\\
-    wavelet&local&localized&sine like\\
-    \hline
-  \end{tabular}
-  \caption{Characteristics of Fourier and wavelet basis.}
-  \label{tab:fourier-wavelet}
-\end{table*}
-
-When reporting computational or measurement results, always
-report the mean (average value) along with a measure of variability
-(standard deviation(s) or standard error of the mean).
-
-
-
-
-
+\subsection{Implementation}
+The model presented here is implemented using tensorflow for the CNN and the denoising was developed using sklearn. The CNN was trained on a Microsoft Azure m16 (TODO add name) for 20 hours and 52 minutes using one kernel of the Nvidia m60 GPU provided by the instance. Furthermore the post-processing part was also trained on the Azure instance. The training of the MLP using 6 jobs was done in 2 hours and 51 minutes for the Grid Search method in order to find the optimal parameters.
+\subsection{Score}
+\subsection{Comparison to baseline model}
+The baseline model achieves a score of (TODO add score) which is significantly lower than the one obtained by our model. Furthemore, the output images obtained by the baseline model are noisy, with patches of roads completely isolated which is something that does not happen on roads.
 
 
 \section{Conclusions}
 \label{sec:conclusions}
+In this paper we have discussed a novel method to solve road segmentation on satellite images. The relatively deep CNN presented seems to be a good compromise between ease of train for small dataset and accuracy. Furthermore, post-processing is an important step for road segmentation. The prior knowledge of knowing that we are predicting roads, allows the training of models for image denoising that take into account the overall shape of the roads.\\
+Regarding the score, despite the lack of input data it achieves a general high score close to state-of-the-art methods. However this could be improved by making the network more deep and with a further increase in the dataset, something which is left as an idea for further work.
 
 
 

@@ -1,9 +1,28 @@
+'''
+Script to augment the dataset
+
+Steps:
+
+1) Remove incorrect images with ground_truth (or inconsistent,
+   which happens when sometimes it classifies a parking as road and sometimes it doesn't).
+
+2) Rotate 90º the original images
+3) Mirror rotation on the original images
+4) Handpick and duplicate diagonal roads so that we have more data on them
+
+
+'''
 import os
 from PIL import Image
 import numpy as np
 
+#Indices for the diagonal roads to duplicate
 DOUBLE_AUGMENT = [1, 12, 23,26,27,42,72,83,91]
+
+#Indices for images incorrectly or inconsistently classified
 TO_REMOVE = [33, 65, 76]
+
+#If true, mirror all images to further increment the dataset
 MIRROR_ALL = True
 
 

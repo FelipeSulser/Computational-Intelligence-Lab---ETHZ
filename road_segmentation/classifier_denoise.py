@@ -1,3 +1,27 @@
+'''
+
+Authors:
+
+- Igor Pesic
+- Felipe Sulser
+- Minesh Patel
+
+Denoise script that takes as input the raw images outputted by the CNN and performs the following steps:
+
+1)Denoise using wavelets
+2)Binarize to b&w
+3)Classify border* pixels using MLP
+
+Border pixels are pixels that have more than 5 neighbors (out of 8) with different colors.
+
+
+You can re-train the classifier by changing Train to True, this will perform a grid search cross validation 
+in order to find the best parameters for the MLP.
+
+
+For more information consult the attached paper (in pdf format) to this script.
+
+'''
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.image as mpimg
@@ -15,24 +39,6 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.preprocessing import StandardScaler
 import utilfuncs
 
-
-'''
-Denoise script that takes as input the raw images outputted by the CNN and performs the following steps:
-
-1)Denoise using wavelets
-2)Binarize to b&w
-3)Classify border* pixels using MLP
-
-Border pixels are pixels that have more than 5 neighbors (out of 8) with different colors.
-
-
-You can re-train the classifier by changing Train to True, this will perform a grid search cross validation 
-in order to find the best parameters for the MLP.
-
-
-For more information consult the attached paper (in pdf format) to this script.
-
-'''
 
 TRAIN = True #If false, then predict
 PATCH_SIZE = 16

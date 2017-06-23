@@ -203,9 +203,6 @@ def extract_labels(filename, num_images, starting_id, context_factor):
         image_filename = filename + imageid + ".png"
         if os.path.isfile(image_filename):
             print ('Loading ' + image_filename)
-            #img = Image.open(image_filename)
-            #downscaled = img.resize((200,200)) #HARDCODED
-            #downscaled = np.asarray(downscaled)
             img = mpimg.imread(image_filename)
             gt_imgs.append(img)
         else:
@@ -245,7 +242,7 @@ def print_predictions(predictions, labels):
     max_predictions = np.argmax(predictions, 1)
     print (str(max_labels) + ' ' + str(max_predictions))
 
-# Convert array of labels to an image
+# Convert array of labels to an image, output image is grayscale and not binary!
 def label_to_img(imgwidth, imgheight, w, h, labels):
     array_labels = np.zeros([imgheight, imgwidth])
     idx = 0
@@ -255,7 +252,7 @@ def label_to_img(imgwidth, imgheight, w, h, labels):
             #     l = 1
             # else:
             #     l = 0
-            l = labels[idx][0]
+            l = labels[idx][0] #grayscale representation, not binary
             array_labels[i:i+h, j:j+w] = l
 
             idx = idx + 1
@@ -405,7 +402,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
 
         fc1_weights = tf.Variable(  # fully connected, depth 512.
-            #originally: int(IMG_PATCH_SIZE / 4 * IMG_PATCH_SIZE / 4 * 80) , now 320
             tf.truncated_normal([FC1_WIDTH, 2048],
                                 stddev=0.1,
                                 seed=SEED), name='fc1_weights')
@@ -493,6 +489,7 @@ def main(argv=None):  # pylint: disable=unused-argument
         data_node = tf.constant(data)
         output = tf.nn.softmax(model(data_node))
         output_prediction = s.run(output)
+        #Result image is in grayscale and not binary
         img_prediction = label_to_img(img.shape[0], img.shape[1], IMG_PATCH_SIZE, IMG_PATCH_SIZE, output_prediction)
 
         return img_prediction
