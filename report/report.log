@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.15 (TeX Live 2014) (preloaded format=pdflatex 2014.12.15)  23 JUN 2017 11:25
+This is pdfTeX, Version 3.14159265-2.6-1.40.15 (TeX Live 2014) (preloaded format=pdflatex 2014.12.15)  23 JUN 2017 13:10
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -339,10 +339,10 @@ Before submitting the final camera ready copy, remember to:
 [3 <./output_cnn_raw.png (PNG copy)> <./only_wav.png (PNG copy)> <./final_res.p
 ng (PNG copy)>] (./report.aux) ) 
 Here is how much of TeX's memory you used:
- 3404 strings out of 493117
- 56455 string characters out of 6135432
- 122509 words of memory out of 5000000
- 6842 multiletter control sequences out of 15000+600000
+ 3405 strings out of 493117
+ 56463 string characters out of 6135432
+ 122512 words of memory out of 5000000
+ 6843 multiletter control sequences out of 15000+600000
  41167 words of font info for 77 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  42i,8n,40p,792b,396s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -355,7 +355,7 @@ m/cmsy10.pfb></usr/local/texlive/2014/texmf-dist/fonts/type1/public/amsfonts/cm
 ></usr/local/texlive/2014/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></usr/lo
 cal/texlive/2014/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></usr/local/texliv
 e/2014/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on report.pdf (3 pages, 143925 bytes).
+Output written on report.pdf (3 pages, 144786 bytes).
 PDF statistics:
  55 PDF objects out of 1000 (max. 8388607)
  34 compressed objects within 1 object stream

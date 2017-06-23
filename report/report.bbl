@@ -57,4 +57,15 @@ D.~P. Kingma and J.~Ba, ``Adam: {A} method for stochastic optimization,''
   \url{http://arxiv.org/abs/1412.6980}
 \BIBentrySTDinterwordspacing
 
+\bibitem{xavier}
+\BIBentryALTinterwordspacing
+X.~Glorot and Y.~Bengio, ``Understanding the difficulty of training deep
+  feedforward neural networks,'' in \emph{Proceedings of the Thirteenth
+  International Conference on Artificial Intelligence and Statistics}, ser.
+  Proceedings of Machine Learning Research, Y.~W. Teh and M.~Titterington,
+  Eds., vol.~9.\hskip 1em plus 0.5em minus 0.4em\relax Chia Laguna Resort,
+  Sardinia, Italy: PMLR, 13--15 May 2010, pp. 249--256. [Online]. Available:
+  \url{http://proceedings.mlr.press/v9/glorot10a.html}
+\BIBentrySTDinterwordspacing
+
 \end{thebibliography}

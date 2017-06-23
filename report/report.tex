@@ -130,7 +130,7 @@ $IN(3, 64\times64)
 
 Additionally all convolutional layers are followed by rectified linear units ($RELU$) layer. The output of the CNN is the softmax function for the two classes and we use the Adam optimizer \cite{adam}.
 
-To reduce overfitting, we initialize the parameters of the network using xavier's initialization algorithm (TODO cite it) and we also use a dropout rate of 0.5 on all the Fully Connected layers during training.
+To reduce overfitting, we initialize the parameters of the network using xavier's initialization algorithm \cite{xavier} and we also use a dropout rate of 0.5 on all the Fully Connected layers during training.
 \subsection{Error function}
 Our CNN model reduces the log-loss, but for the evaluation we have used two other loss metrics. The first one was
 the classification error and it was used on the validation set that helped us find the right number of training epochs. 
@@ -154,7 +154,7 @@ We propose an approach that first denoises the image and then performs a predict
 
 In figure \ref{fig:denoising} we can see the outputs of each step. We start with the raw CNN output, we then apply the wavelet denoising, and afterwards we apply the MLP to the border patches only and fill the patch color with the neighbouring technique.
 \subsubsection{Wavelet denoising}
-For the denoising, we choose wavelets because the results obtained were smooth and appropiate for road images. The wavelets used are (TODO add default sklearn wavelets, gabor? not sure). Furthermore the denoising is done using a sigma of 3. 
+For the denoising, we choose wavelets because the results obtained were smooth and appropiate for road images. The wavelets used are Daubechies 1 wavelets. Furthermore the denoising is done assigning the hyperparameter sigma to 3. 
 \subsubsection{Multilayer Perceptron classifier}
 The input datapoints of the classifier are patches surrounded with context. For the patches, we consider a window of $11\times11$ patches, with the current one to be classified centered. Also, we do not classify all the patches in the image, only the \textit{border patches}. A patch is considered a \textit{border patch} if 5 of its 8 immediate neighbors have a distinct color. We only consider these patches because we observed that the other patches are generally correctly classified as the raw output of the CNN is not so noisy compared to the baseline's output.\\
 For the structure of the classifier itself, the parameters were found using a cross validated grid search. The best settings found are to use two hidden layers of size 50 each and to use the logistic activation function. Finally the training of the MLP was done on the 309 groundtruth images that we obtain using data augmentation techniques.
@@ -184,10 +184,10 @@ For the structure of the classifier itself, the parameters were found using a cr
 \section{Results}
 \label{sec:results}
 \subsection{Implementation}
-The model presented here is implemented using tensorflow for the CNN and the denoising was developed using sklearn. The CNN was trained on a Microsoft Azure m16 (TODO add name) for 20 hours and 52 minutes using one kernel of the Nvidia m60 GPU provided by the instance. Furthermore the post-processing part was also trained on the Azure instance. The training of the MLP using 6 jobs was done in 2 hours and 51 minutes for the Grid Search method in order to find the optimal parameters.
+The model presented here is implemented using tensorflow for the CNN and the denoising was developed using sklearn. The CNN was trained on an Microsoft Azure NV6 instance for 20 hours and 52 minutes using one kernel of the Nvidia Tesla m60 GPU using 2048 CUDA cores provided by the instance. Furthermore the post-processing part was also trained on the Azure instance. The training of the MLP using 6 jobs was done in 2 hours and 51 minutes for the Grid Search method in order to find the optimal parameters.
 \subsection{Score}
 \subsection{Comparison to baseline model}
-The baseline model achieves a score of (TODO add score) which is significantly lower than the one obtained by our model. Furthemore, the output images obtained by the baseline model are noisy, with patches of roads completely isolated which is something that does not happen on roads.
+The baseline model achieves an F1 score of 0.73723 on the public Kaggle competition, which is significantly lower than the one obtained by our model. Furthemore, the output images obtained by the baseline model are noisy, with patches of roads completely isolated which is something that does not happen on roads.
 
 
 \section{Conclusions}
