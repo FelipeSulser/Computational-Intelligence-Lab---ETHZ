@@ -32,7 +32,9 @@ Please follow the steps in order so that everything may work.
 
  10) To speed up the training, you may set n_jobs to a higher number on line 108.
 
- 11) Run "python3 classifier_denoise.py"
+ 11) Run "python3 classifier_denoise.py" (needs to install skimage-restore beta because of the denoise_wavelet function from skimage-restoration module ver. 0.14dev)
+  If you do not have it install, follow the instructions here
+  http://scikit-image.org/docs/dev/install.html
 
  12) To predict, change the variable "TRAIN" to 'False'
 
