@@ -10,7 +10,7 @@ Denoise script that takes as input the raw images outputted by the CNN and perfo
 
 1)Denoise using wavelets
 2)Binarize to b&w
-3)Classify border* pixels using MLP
+3)Classify border pixels using MLP
 
 Border pixels are pixels that have more than 5 neighbors (out of 8) with different colors.
 

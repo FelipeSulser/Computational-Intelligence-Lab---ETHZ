@@ -13,26 +13,28 @@ Please follow the steps in order so that everything may work.
 
  3) Run "python3 increase_dataset.py"
 
- 4) Train the network opening the file 'tf_aerial_images_deep.py' and set the variable "MODE" to 'train' (on line 55).
+ 4) To shuffle the extended datasets run "python3 shuffle_training_set.py"
 
- 5) Run "python3 tf_aerial_images_deep.py" (will take a long time to train)
+ 5) Train the network opening the file 'tf_aerial_images_deep.py' and set the variable "MODE" to 'train' (on line 55).
 
- 6) To predict, now open the file 'tf_aerial_images_deep.py' and set the variable "MODE" to 'predict' (on line 55).
+ 6) Run "python3 tf_aerial_images_deep.py" (will take a long time to train)
 
- 7) Run "python3 tf_aerial_images_deep.py" to predict, this will generate images in the folder /user/myuser/cilproject/predictions_test
+ 7) To predict, now open the file 'tf_aerial_images_deep.py' and set the variable "MODE" to 'predict' (on line 55).
 
- 8) To train the denoising MLP classifier open the file 'classifier_denoise.py' and set the variable "TRAIN" to 'True' (on line 43).
+ 8) Run "python3 tf_aerial_images_deep.py" to predict, this will generate images in the folder /user/myuser/cilproject/predictions_test
 
- 9) To speed up the training, you may set n_jobs to a higher number on line 108.
+ 9) To train the denoising MLP classifier open the file 'classifier_denoise.py' and set the variable "TRAIN" to 'True' (on line 43).
 
- 10) Run "python3 classifier_denoise.py"
+ 10) To speed up the training, you may set n_jobs to a higher number on line 108.
 
- 11) To predict, change the variable "TRAIN" to 'False'
+ 11) Run "python3 classifier_denoise.py"
 
- 12) Run "python3 classifier_denoise.py"
+ 12) To predict, change the variable "TRAIN" to 'False'
 
- 13) The images will be written to the folder called /user/myuser/cilproject/predictions_test/result_wavelet
+ 13) Run "python3 classifier_denoise.py"
 
- 14) To generate the file to upload to kaggle, run "python3 mask_to_submission.py"
+ 14) The images will be written to the folder called /user/myuser/cilproject/predictions_test/result_wavelet
 
- 15) The csv generated is called 'deep_submission.csv' and is located at /user/myuser/cilproject
+ 15) To generate the file to upload to kaggle, run "python3 mask_to_submission.py"
+
+ 16) The csv generated is called 'deep_submission.csv' and is located at /user/myuser/cilproject
