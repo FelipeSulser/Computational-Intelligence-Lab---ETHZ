@@ -6,8 +6,13 @@ Please follow the steps in order so that everything may work.
  1) Put everything together (put the zip file with the code with the dataset together)
 
  For example, if the zip is unzipped into the folder /user/myuser/cilproject
- then, there needs to be a folder called training with the training dataset at /user/myuser/cilproject/training
- and then another one called 'test_set_images' with the images to predict at /user/myuser/cilproject/test_set_images
+ then:
+
+ Import the test set images:
+ 	There needs to be a folder called "training" with the training dataset at /user/myuser/cilproject/training
+
+ Import the prediction set images:
+	Add the folder 'test_set_images' with the images to predict at /user/myuser/cilproject/test_set_images
 
  2) Open a terminal and go to /user/myuser/cilproject
 
