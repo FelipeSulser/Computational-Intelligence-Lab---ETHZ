@@ -142,16 +142,15 @@ the test error. The latter was given by the Kaggle competition.
 Since we used the Adam optimizer, there were not many parameters to tune. One parameter was the batch size, which we 
 have not changed from the baseline model since in the one of previous exercises we have learned the it should nether be too
 big nor too small, so we found 32 to be a good choice. The only other parameter to tune was the number of training epochs.
-This one we have empirically chosen to be 300 based on training the model on 95\% of the images and 
-validating it in every epoch on the remaining 5\% of the images. The Figure \ref{fig:loss} shows
+This one we have empirically chosen to be 300 based on training the model on 95$%$ of the images and 
+validating it in every epoch on the remaining 5$%$ of the images. The Figure (TODO: ref the plot of validation error) shows
 how the validation error changes with the number of epochs. Beside these, there were no further hyper-parameters to tune.
 
 
 \begin{figure}[h]
  \centering
   \includegraphics[width=.8\linewidth]{loss.png}
-  \caption{Cross entropy loss with 5\% validation set}
-  \label{fig:loss}
+  \caption{Cross entropy loss with 5  validation set}
 \end{figure}
 
 \subsection{Post-processing}
