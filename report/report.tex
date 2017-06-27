@@ -79,22 +79,42 @@ results we achieve using our model.
 
 \subsection{Data Augmentation}
 \label{sec:data_aug}
-The original data set consisted of 100 labeled aerial images of road maps. As our approach consists of a
-deep neural network, we consider that the given data is not enough and thus we try to augment it to expand it further.
-For data augmentation, we first rotate all the images by 90 degrees and to mirror them. Beside the obvious increase
-in the training data size, this approach also makes our model more robust. Furthermore we have noticed that the 
-predictions on the diagonal roads were much worse than on the horizontal and vertical ones. This appears to be due to
-the lack of diagonal roads in our original data set. In order to fix this, we pick 9 images with diagonal
-roads and highways which we rotate again by 180 and 270 degrees. Finally, we have noticed some inconsistencies
-in the labeling of some images  in the dataset and we have decided to discard those from our training data (i.e. a building classified as a road and viceversa). At the end, our data set has 309 images in total, created by rotations and by augmentation of diagonal roads.
+The input data set consists of 100 labeled aerial images of road maps. Since
+our approach uses a deep neural network, we need a large amount of input data
+with which to train the model. Therefore, we expand the input data set by also
+training with transformed versions of the provided images. To generate the
+transformed images, we rotate each input image by 90 degrees and mirror it. In
+addition to increasing the training data set size, this approach also makes our
+model more robust by training with roads of different orientations than just
+the ones provided in the input data set. 
+
+Additionally, we observed that the model's predictions on diagonal roads were
+far less accurate than on horizontal and vertical ones. We attributed this
+to the lack of diagonal roads in our original training data set. In order to
+fix this, we selected 9 images with diagonal roads and highways, which we
+rotate again by 180 and 270 degrees and add to the training data set. This
+allows our model to more accurately segment diagonal roads during prediction.
+
+Finally, we observed inconsistencies in the labeling of some images in the
+input dataset (i.e., a building classified as a road and vice-versa), and we
+decided to discard those inputs from our training data. In total, after
+cleaning and expanding the given data, our training data set has 309 images
+in total.
 
 \subsection{Feature extraction}
 \label{sec:feature}
-In the baseline model we split the image in patches of size $16\times16$ pixels. This provided granularity
-that was good enough, but it lacked the information about the surroundings. In order to address that, we have come up
-with solution that we called \textit{added context}. We have also found that other authors propose a similar approach to enhance the context of a patch such as in Mnih et al. 2010 \cite{Mnih2010} and Alina Elena 2016 \cite{mthesis}. The approach, that enhances the context of a patch, first splist the image in $16\times16$ patches and then adds the 
-surroundings area to it so that patches have the total size of $64\times64$ pixels. The difference between patches is
-shown in \ref{fig:patches}. Labels are based solely on the original $16\times16$ patch, however in order to classify them correctly, the input is augmented with the context of the small patch.
+In our first attempt at a baseline model, we split the input images into in
+patches of size $16\times16$ pixels. While this provided sufficient
+granularity, it lost the information contained in each patches' surroundings.
+In order to address this, we developed a solution that we call \textit{added
+context}, which enhances each patch by adding back its surrounding patches so
+that the final patches have a total size of $64\times64$ pixels. The difference
+between patches and context-added patches is shown in \ref{fig:patches}. Prior
+work, such as Mnih et al., 2010, \cite{Mnih2010} and Alina Elena, 2016,
+\cite{mthesis} propose similar approaches to enhance the context of a
+patch. Labels are based solely on the original $16\times16$ patch. However, in
+order to classify patches correctly, the input data set is augmented with the
+context of the small patch. 
 
 \begin{figure}
 \centering
@@ -112,14 +132,20 @@ shown in \ref{fig:patches}. Labels are based solely on the original $16\times16$
 \label{fig:patches}
 \end{figure}
 
-We have chosen the patch size empirically by trying out different context-added sizes and 64 turned out to bring the
-best score on the Kaggle competition\footnote{\url{inclass.kaggle.com/c/cil-road-segmentation-2017}}.
+The patch size was determined empirically by trying out different context-added
+sizes. We found that a context-added patch size of 64 provided the best score
+on the Kaggle
+competition\footnote{\url{inclass.kaggle.com/c/cil-road-segmentation-2017}}.
 
 \subsection{Class balancing}
 \label{sec:balance}
-Because the dataset was very unbalanced (i.e. the number of background patches was approximately three times bigger than the number of road patches, we had to balance the data so that both classes have a similar number of datapoints. Balancing the data helps reduce the bias towards a certain value in the form of a prior, which is due to the error minimization we are performing. We have done that by 
-equalizing the number of patches in both classes, i.e. by randomly picking a limited number of background patches.
-
+Training with a balanced dataset (i.e., a dataset with an equal number of
+patches of each class) helps reduce the bias towards a certain value in the
+form of a prior, which is due to the error minimization we are performing.
+Because the provided input dataset was highly unbalanced (i.e., the number of
+background patches was approximately three times greater than the number of
+road patches), we balanced the data by randomly choosing a limited number of
+background patches to train with. 
 
 
 \section{Models and Methods}
