@@ -5,7 +5,7 @@
 \usepackage{url}
 \usepackage{graphicx}	% For figure environment
 \usepackage{subcaption}
-
+\usepackage{cite}
 
 \begin{document}
 \title{Computational Intelligence Lab Project:\\ Road Segmentation}
@@ -40,19 +40,38 @@
 
 \section{Introduction}
 
-The goal of this work is to segment out the road on the aerial images. The problem is to decide what pixels
-represent the road and what pixels are not the road. Even though we would ideally like to have a pixel-wise
-granularity, we are proposing an approach that achieves patch-wise granularity which is, in many cases good enough,
-especially in this project. This also simplifies the problem substantially since each patch has only value 0 (no road) or 1 (road). \\
-\\
-For the CNN, we have implemented a novel solution which combines multiple similar other works on this topic 
-and also extends it by adding novel ideas. The focus of our work was the design of the
-CNN but we also invested a substantial amount of effort into denoising in order
-to improve the results obtained by CNN.\\
-\\
-This report has the following structure: in Section \ref{sec:Data} we explain all the steps we do before training
-and evaluating the model, in Section \ref{sec:model_and_methods} we describe our model, both CNN and denoising
-that comes after that. Finally in \ref{sec:results} we discuss the results achieved with our model.
+Image segmentation covers a general class of problems that require classifying
+input images' pixels into different regions, called \emph{segments}, based on
+predefined criteria.  \emph{Road segmentation} is a subset of image
+segmentation that focuses on identifying all image pixels belonging to roads
+and has gained academic interest due to numerous real-world applications
+ranging from automated monitoring of civil
+infrastructure~\cite{radopoulou2016improving} to disaster
+preparedness~\cite{li2007fuzzy}. 
+
+Our goal in this work is to perform accurate road segmentation on aerial
+satellite images. Given a set of input aerial images, we would like to
+accurately determine which pixels belong to roads and which do not, assigning
+each pixel a value of 0 (no road) or 1 (road). Ideally, we would segment the
+images at a pixel granularity, but in order to simplify the problem, we use an
+approach that achieves patch-wise granularity. We find that our approach
+simplifies the problem substantially and is sufficient for this course
+project. 
+
+Our solution makes use of a convolutional neural network (CNN) combined with
+pre- and post-processing steps in order to achieve high-accuracy road
+segmentation.  To the best of our knowledge, we have designed a novel
+architecture, which combines multiple academic works on similar
+topics~\cite{mthesis,Mnih2010,vgg,xavier} and extends the combination by adding
+our own ideas. Although we focused primarily on the design of our CNN, we also
+invested a substantial amount of effort into post-processing the outputs using
+a denoising step in order to improve the final results.
+
+This report has the following structure: in Section \ref{sec:Data} we explain
+the preprocessing we do before training and evaluating the model. In Section
+\ref{sec:model_and_methods} we describe our model, including both the CNN and
+the denoising applied afterwards. Finally, in \ref{sec:results} we discuss the
+results we achieve using our model.
 
 
 \section{Data}
