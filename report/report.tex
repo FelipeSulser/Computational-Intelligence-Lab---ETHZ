@@ -243,7 +243,7 @@ For the structure of the classifier itself, the parameters were found using a cr
 \subsection{Implementation}
 The model presented here is implemented using tensorflow for the CNN and the denoising was developed using scikit-learn. The CNN was trained on an Microsoft Azure NV6 instance for 20 hours and 52 minutes using one kernel of the Nvidia Tesla m60 GPU using 2048 CUDA cores provided by the instance. Furthermore the post-processing part was also trained on the Azure instance. The training of the MLP using 6 jobs was done in 2 hours and 51 minutes for the Grid Search method in order to find the optimal parameters.
 \subsection{Score}
-
+The raw output of our CNN achieves an F1 score of $\sim 0.9$. With post-processing, we aim to achieve a higher score and to fix some classification errors. After denoising, the score achieved is $\sim 0.9095$. From the score, we can see how the results obtained from the CNN network have already a relatively high score and that post-processing does not help significantly to improve the score. The solutions are close to the state-of-the-art methods, however they can be improved by extending the training time as can be seen in figure \ref{fig:loss}.
 
 \subsection{Comparison to baseline model}
 The baseline model achieves an F1 score of 0.73723 on the public Kaggle competition, which is significantly lower than the one obtained by our model. Furthemore, the output images obtained by the baseline model are noisy, with patches of roads completely isolated which is something that does not happen on roads.
