@@ -834,4 +834,6 @@ def main(argv=None):  # pylint: disable=unused-argument
 
 if __name__ == '__main__':
 
+    if not os.path.isdir('datafiles'):
+        os.mkdir('datafiles')
     tf.app.run()
