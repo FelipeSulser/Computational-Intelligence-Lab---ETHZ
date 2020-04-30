@@ -15,7 +15,7 @@
 - Before balancing the data set, shuffle both classes again
 
 
-### Preproces
+### Preprocess
 - Histogram equalization failed
 - Subtracting mean patch failed
 
